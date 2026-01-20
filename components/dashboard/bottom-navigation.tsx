@@ -1,26 +1,27 @@
 "use client"
 
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Home, TrendingUp, CreditCard, User } from "lucide-react"
 
 interface NavItem {
     icon: React.ComponentType<{ className?: string }>
     label: string
-    isActive?: boolean
-    onClick?: () => void
+    href: string
 }
 
 interface BottomNavigationProps {
-    activeTab?: string
-    onTabChange?: (tab: string) => void
     className?: string
 }
 
-export function BottomNavigation({ activeTab = 'home', onTabChange, className }: BottomNavigationProps) {
+export function BottomNavigation({ className }: BottomNavigationProps) {
+    const pathname = usePathname()
+
     const navItems: NavItem[] = [
-        { icon: Home, label: '홈', isActive: activeTab === 'home' },
-        { icon: TrendingUp, label: '통계', isActive: activeTab === 'stats' },
-        { icon: CreditCard, label: '카드', isActive: activeTab === 'cards' },
-        { icon: User, label: '마이', isActive: activeTab === 'profile' },
+        { icon: Home, label: '홈', href: '/' },
+        { icon: TrendingUp, label: '통계', href: '/stats' },
+        { icon: CreditCard, label: '카드', href: '/cards' },
+        { icon: User, label: '마이', href: '/profile' },
     ]
 
     return (
@@ -28,20 +29,22 @@ export function BottomNavigation({ activeTab = 'home', onTabChange, className }:
             <div className="flex items-center justify-around h-20">
                 {navItems.map((item) => {
                     const Icon = item.icon
+                    const isActive = pathname === item.href
+
                     return (
-                        <button
+                        <Link
                             key={item.label}
-                            onClick={() => onTabChange?.(item.label.toLowerCase())}
+                            href={item.href}
                             className="flex flex-col items-center gap-1 group"
                         >
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center group-active:scale-95 transition-transform ${item.isActive ? 'bg-primary/10' : ''
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center group-active:scale-95 transition-transform ${isActive ? 'bg-primary/10' : ''
                                 }`}>
-                                <Icon className={`w-5 h-5 ${item.isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                                <Icon className={`w-5 h-5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
                             </div>
-                            <span className={`text-[11px] font-medium ${item.isActive ? 'text-primary' : 'text-muted-foreground'}`}>
+                            <span className={`text-[11px] font-medium ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
                                 {item.label}
                             </span>
-                        </button>
+                        </Link>
                     )
                 })}
             </div>

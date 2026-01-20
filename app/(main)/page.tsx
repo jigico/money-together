@@ -3,7 +3,6 @@ import { SpendingSummaryCard } from "@/components/dashboard/spending-summary-car
 import { QuickStatsGrid } from "@/components/dashboard/quick-stats-grid"
 import { TransactionList, type Transaction } from "@/components/dashboard/transaction-list"
 import { FloatingActionButton } from "@/components/dashboard/floating-action-button"
-import { BottomNavigation } from "@/components/dashboard/bottom-navigation"
 
 export default function MoneyTogetherDashboard() {
     const transactions: Transaction[] = [
@@ -35,9 +34,6 @@ export default function MoneyTogetherDashboard() {
 
             {/* Floating Action Button */}
             <FloatingActionButton />
-
-            {/* Bottom Navigation */}
-            <BottomNavigation activeTab="home" />
         </div>
     )
 }
