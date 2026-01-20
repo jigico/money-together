@@ -24,8 +24,8 @@ export function NumberKeypad({ onKeyPress, onSave, isValid, className }: NumberK
                         type="button"
                         onClick={() => onKeyPress(key)}
                         className={`h-16 rounded-2xl text-xl font-semibold transition-all duration-150 active:scale-95 ${key === "delete"
-                                ? "bg-muted text-muted-foreground active:bg-muted/80"
-                                : "bg-secondary text-foreground active:bg-secondary/80"
+                                ? "bg-gray-200 text-gray-600 active:bg-gray-300"
+                                : "bg-gray-100 text-gray-900 active:bg-gray-200"
                             }`}
                     >
                         {key === "delete" ? (
@@ -59,8 +59,8 @@ export function NumberKeypad({ onKeyPress, onSave, isValid, className }: NumberK
                 onClick={onSave}
                 disabled={!isValid}
                 className={`w-full py-4 rounded-2xl text-lg font-semibold transition-all duration-200 active:scale-[0.98] ${isValid
-                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
-                        : "bg-muted text-muted-foreground cursor-not-allowed"
+                        ? "bg-[#0047AB] text-white shadow-lg shadow-[#0047AB]/30"
+                        : "bg-gray-200 text-gray-400 cursor-not-allowed"
                     }`}
             >
                 저장하기

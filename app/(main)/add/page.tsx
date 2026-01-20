@@ -34,7 +34,7 @@ export default function AddPage() {
     const isValid = amount.length > 0 && selectedCategory !== null
 
     return (
-        <div className="min-h-screen bg-background flex flex-col">
+        <div className="min-h-screen bg-[#F5F5F7] flex flex-col max-w-md mx-auto">
             {/* Header */}
             <header className="flex items-center justify-between px-4 pt-14 pb-4">
                 <Link
