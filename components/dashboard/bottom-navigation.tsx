@@ -25,7 +25,7 @@ export function BottomNavigation({ className }: BottomNavigationProps) {
     ]
 
     return (
-        <div className={`fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-xl border-t border-border/50 px-6 pb-safe ${className || ''}`}>
+        <div className={`fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-200/50 px-6 pb-safe ${className || ''}`}>
             <div className="flex items-center justify-around h-20">
                 {navItems.map((item) => {
                     const Icon = item.icon
