@@ -25,7 +25,15 @@ export function BottomNavigation({ className }: BottomNavigationProps) {
     ]
 
     return (
-        <div className={`fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-200/50 px-6 pb-safe ${className || ''}`}>
+        <div
+            className={`fixed bottom-0 left-0 right-0 border-t px-6 pb-safe ${className || ''}`}
+            style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                borderTopColor: 'rgba(229, 231, 235, 0.5)',
+            }}
+        >
             <div className="flex items-center justify-around h-20">
                 {navItems.map((item) => {
                     const Icon = item.icon
