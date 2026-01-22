@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { ChevronLeft, ChevronRight, TrendingDown } from "lucide-react"
 import { CategoryDonutChart, type CategoryData } from "@/components/stats/category-donut-chart"
-import { MemberComparisonBar } from "@/components/stats/member-comparison-bar"
+import { MemberComparisonBar, type MemberSpending } from "@/components/stats/member-comparison-bar"
 import { MonthlyTrendChart, type MonthlyData } from "@/components/stats/monthly-trend-chart"
 import { TopCategoriesList, type TopCategory } from "@/components/stats/top-categories-list"
 
@@ -31,12 +31,29 @@ const topCategories: TopCategory[] = [
     { rank: 3, name: "교통", amount: 180000, icon: "🚗", color: "bg-blue-100" },
 ]
 
+const memberSpending: MemberSpending[] = [
+    {
+        id: "husband",
+        name: "남편",
+        avatar: "남",
+        amount: 720000,
+        color: "#0047AB",
+        bgColor: "#0047AB",
+    },
+    {
+        id: "wife",
+        name: "아내",
+        avatar: "여",
+        amount: 514500,
+        color: "#fb7185",
+        bgColor: "#fb7185",
+    },
+]
+
 export default function StatsPage() {
     const [currentMonth, setCurrentMonth] = useState({ year: 2026, month: 1 })
 
     const totalSpending = categoryData.reduce((sum, item) => sum + item.value, 0)
-    const husbandSpending = 720000
-    const wifeSpending = 514500
 
     const prevMonth = () => {
         setCurrentMonth((prev) => {
@@ -99,11 +116,7 @@ export default function StatsPage() {
 
             {/* Member Comparison */}
             <div className="px-5 mb-6">
-                <MemberComparisonBar
-                    husbandSpending={husbandSpending}
-                    wifeSpending={wifeSpending}
-                    totalSpending={totalSpending}
-                />
+                <MemberComparisonBar members={memberSpending} />
             </div>
 
             {/* Monthly Trend Bar Chart */}
