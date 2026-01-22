@@ -14,11 +14,11 @@ export default function MoneyTogetherDashboard() {
     ]
 
     return (
-        <div className="min-h-screen bg-background pb-24">
+        <div className="min-h-screen bg-[#F5F5F7] pb-24">
             {/* Header */}
             <div className="px-5 pt-14 pb-8">
                 <div className="flex items-center justify-between mb-8">
-                    <h1 className="text-2xl font-semibold text-foreground tracking-tight">머니투게더</h1>
+                    <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">머니투게더</h1>
                     <UserAvatars />
                 </div>
 

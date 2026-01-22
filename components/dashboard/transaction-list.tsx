@@ -20,12 +20,12 @@ export function TransactionList({ transactions, className }: TransactionListProp
     return (
         <div className={className}>
             <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-foreground">최근 내역</h2>
-                <button className="text-sm text-primary font-medium">전체보기</button>
+                <h2 className="text-lg font-semibold text-gray-900">최근 내역</h2>
+                <button className="text-sm text-[#0047AB] font-medium">전체보기</button>
             </div>
 
-            <Card className="bg-card rounded-3xl shadow-sm border-0 overflow-hidden">
-                <div className="divide-y divide-border/30">
+            <Card className="bg-white rounded-3xl shadow-sm border-0 overflow-hidden">
+                <div className="divide-y divide-gray-100">
                     {transactions.map((transaction, index) => (
                         <div
                             key={transaction.id}
@@ -37,11 +37,11 @@ export function TransactionList({ transactions, className }: TransactionListProp
                                     {transaction.icon}
                                 </div>
                                 <div>
-                                    <p className="font-semibold text-foreground text-[15px]">{transaction.category}</p>
-                                    <p className="text-xs text-muted-foreground mt-0.5">{transaction.date}</p>
+                                    <p className="font-semibold text-gray-900 text-[15px]">{transaction.category}</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">{transaction.date}</p>
                                 </div>
                             </div>
-                            <p className="text-base font-bold text-foreground">
+                            <p className="text-base font-bold text-gray-900">
                                 -₩{transaction.amount.toLocaleString()}
                             </p>
                         </div>

@@ -93,21 +93,28 @@ export default function StatsPage() {
             </div>
 
             {/* Category Donut Chart */}
-            <CategoryDonutChart data={categoryData} className="px-5 mb-6" />
+            <div className="px-5 mb-6">
+                <CategoryDonutChart data={categoryData} />
+            </div>
 
             {/* Member Comparison */}
-            <MemberComparisonBar
-                husbandSpending={husbandSpending}
-                wifeSpending={wifeSpending}
-                totalSpending={totalSpending}
-                className="px-5 mb-6"
-            />
+            <div className="px-5 mb-6">
+                <MemberComparisonBar
+                    husbandSpending={husbandSpending}
+                    wifeSpending={wifeSpending}
+                    totalSpending={totalSpending}
+                />
+            </div>
 
             {/* Monthly Trend Bar Chart */}
-            <MonthlyTrendChart data={monthlyData} className="px-5 mb-6" />
+            <div className="px-5 mb-6">
+                <MonthlyTrendChart data={monthlyData} />
+            </div>
 
             {/* Top 3 Categories */}
-            <TopCategoriesList categories={topCategories} className="px-5 mb-6" />
+            <div className="px-5 mb-6">
+                <TopCategoriesList categories={topCategories} />
+            </div>
         </div>
     )
 }
