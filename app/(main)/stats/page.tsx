@@ -1,59 +1,56 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { ChevronLeft, ChevronRight, TrendingDown } from "lucide-react"
 import { CategoryDonutChart, type CategoryData } from "@/components/stats/category-donut-chart"
 import { MemberComparisonBar, type MemberSpending } from "@/components/stats/member-comparison-bar"
 import { MonthlyTrendChart, type MonthlyData } from "@/components/stats/monthly-trend-chart"
 import { TopCategoriesList, type TopCategory } from "@/components/stats/top-categories-list"
-
-const categoryData: CategoryData[] = [
-    { name: "식비", value: 450000, color: "#f87171" },
-    { name: "교통", value: 180000, color: "#60a5fa" },
-    { name: "쇼핑", value: 320000, color: "#a78bfa" },
-    { name: "카페", value: 95000, color: "#fbbf24" },
-    { name: "주거", value: 150000, color: "#34d399" },
-    { name: "기타", value: 39500, color: "#9ca3af" },
-]
-
-const monthlyData: MonthlyData[] = [
-    { month: "9월", amount: 1450000 },
-    { month: "10월", amount: 1280000 },
-    { month: "11월", amount: 1520000 },
-    { month: "12월", amount: 1390000 },
-    { month: "1월", amount: 1234500 },
-]
-
-const topCategories: TopCategory[] = [
-    { rank: 1, name: "식비", amount: 450000, icon: "🍽️", color: "bg-rose-100" },
-    { rank: 2, name: "쇼핑", amount: 320000, icon: "🛍️", color: "bg-purple-100" },
-    { rank: 3, name: "교통", amount: 180000, icon: "🚗", color: "bg-blue-100" },
-]
-
-const memberSpending: MemberSpending[] = [
-    {
-        id: "husband",
-        name: "남편",
-        avatar: "남",
-        amount: 720000,
-        color: "#0047AB",
-        bgColor: "#0047AB",
-    },
-    {
-        id: "wife",
-        name: "아내",
-        avatar: "여",
-        amount: 514500,
-        color: "#fb7185",
-        bgColor: "#fb7185",
-    },
-]
+import { getCategorySpending, getMemberSpending, getMonthlySpending, getTopCategories, getTotalSpending } from "@/lib/supabase/queries"
 
 export default function StatsPage() {
     const [currentMonth, setCurrentMonth] = useState({ year: 2026, month: 1 })
+    const [categoryData, setCategoryData] = useState<CategoryData[]>([])
+    const [memberSpending, setMemberSpending] = useState<MemberSpending[]>([])
+    const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([])
+    const [topCategories, setTopCategories] = useState<TopCategory[]>([])
+    const [totalSpending, setTotalSpending] = useState(0)
+    const [loading, setLoading] = useState(true)
 
-    const totalSpending = categoryData.reduce((sum, item) => sum + item.value, 0)
+    useEffect(() => {
+        async function fetchData() {
+            setLoading(true)
+            try {
+                // 현재 월의 시작일과 종료일
+                const startOfMonth = new Date(currentMonth.year, currentMonth.month - 1, 1)
+                    .toISOString().split('T')[0]
+                const endOfMonth = new Date(currentMonth.year, currentMonth.month, 0)
+                    .toISOString().split('T')[0]
+
+                // 데이터 가져오기
+                const [categories, members, monthly, top, total] = await Promise.all([
+                    getCategorySpending(startOfMonth, endOfMonth),
+                    getMemberSpending(startOfMonth, endOfMonth),
+                    getMonthlySpending(5),
+                    getTopCategories(3, startOfMonth, endOfMonth),
+                    getTotalSpending(startOfMonth, endOfMonth),
+                ])
+
+                setCategoryData(categories)
+                setMemberSpending(members)
+                setMonthlyData(monthly)
+                setTopCategories(top)
+                setTotalSpending(total)
+            } catch (error) {
+                console.error('Error fetching stats data:', error)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchData()
+    }, [currentMonth])
 
     const prevMonth = () => {
         setCurrentMonth((prev) => {
@@ -67,6 +64,15 @@ export default function StatsPage() {
             if (prev.month === 12) return { year: prev.year + 1, month: 1 }
             return { ...prev, month: prev.month + 1 }
         })
+    }
+
+    // 로딩 상태
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#F5F5F7] pb-28 flex items-center justify-center">
+                <div className="text-gray-500">통계 데이터를 불러오는 중...</div>
+            </div>
+        )
     }
 
     return (
@@ -110,24 +116,38 @@ export default function StatsPage() {
             </div>
 
             {/* Category Donut Chart */}
-            <div className="px-5 mb-6">
-                <CategoryDonutChart data={categoryData} />
-            </div>
+            {categoryData.length > 0 ? (
+                <div className="px-5 mb-6">
+                    <CategoryDonutChart data={categoryData} />
+                </div>
+            ) : (
+                <div className="px-5 mb-6">
+                    <Card className="bg-white rounded-3xl p-6 shadow-sm border-0">
+                        <p className="text-center text-gray-500">카테고리별 지출 데이터가 없습니다</p>
+                    </Card>
+                </div>
+            )}
 
             {/* Member Comparison */}
-            <div className="px-5 mb-6">
-                <MemberComparisonBar members={memberSpending} />
-            </div>
+            {memberSpending.length > 0 && (
+                <div className="px-5 mb-6">
+                    <MemberComparisonBar members={memberSpending} />
+                </div>
+            )}
 
             {/* Monthly Trend Bar Chart */}
-            <div className="px-5 mb-6">
-                <MonthlyTrendChart data={monthlyData} />
-            </div>
+            {monthlyData.length > 0 && (
+                <div className="px-5 mb-6">
+                    <MonthlyTrendChart data={monthlyData} />
+                </div>
+            )}
 
             {/* Top 3 Categories */}
-            <div className="px-5 mb-6">
-                <TopCategoriesList categories={topCategories} />
-            </div>
+            {topCategories.length > 0 && (
+                <div className="px-5 mb-6">
+                    <TopCategoriesList categories={topCategories} />
+                </div>
+            )}
         </div>
     )
 }
