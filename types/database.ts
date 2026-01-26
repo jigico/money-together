@@ -1,4 +1,12 @@
-// Database Types
+// Database Types - Structured for Supabase v2
+export type Json =
+    | string
+    | number
+    | boolean
+    | null
+    | { [key: string]: Json | undefined }
+    | Json[]
+
 export interface Database {
     public: {
         Tables: {
@@ -6,25 +14,74 @@ export interface Database {
                 Row: Group
                 Insert: Omit<Group, 'id' | 'created_at'>
                 Update: Partial<Omit<Group, 'id' | 'created_at'>>
+                Relationships: []
             }
             transactions: {
                 Row: Transaction
-                Insert: Omit<Transaction, 'id' | 'created_at'>
-                Update: Partial<Omit<Transaction, 'id' | 'created_at'>>
+                Insert: {
+                    group_id: string
+                    amount: number
+                    category_id: string
+                    member_id: string
+                    description?: string
+                    date: string
+                }
+                Update: Partial<{
+                    group_id: string
+                    amount: number
+                    category_id: string
+                    member_id: string
+                    description: string
+                    date: string
+                }>
+                Relationships: [
+                    {
+                        foreignKeyName: "transactions_category_id_fkey"
+                        columns: ["category_id"]
+                        referencedRelation: "categories"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "transactions_group_id_fkey"
+                        columns: ["group_id"]
+                        referencedRelation: "groups"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "transactions_member_id_fkey"
+                        columns: ["member_id"]
+                        referencedRelation: "members"
+                        referencedColumns: ["id"]
+                    }
+                ]
             }
             categories: {
                 Row: Category
                 Insert: Omit<Category, 'id'>
                 Update: Partial<Omit<Category, 'id'>>
+                Relationships: []
             }
             members: {
                 Row: Member
                 Insert: Omit<Member, 'id'>
                 Update: Partial<Omit<Member, 'id'>>
+                Relationships: [
+                    {
+                        foreignKeyName: "members_group_id_fkey"
+                        columns: ["group_id"]
+                        referencedRelation: "groups"
+                        referencedColumns: ["id"]
+                    }
+                ]
             }
         }
+        Views: Record<string, never>
+        Functions: Record<string, never>
+        Enums: Record<string, never>
+        CompositeTypes: Record<string, never>
     }
 }
+
 
 // Group Type (부부/가구 그룹)
 export interface Group {
@@ -70,6 +127,7 @@ export interface TransactionUI {
     icon: string
     amount: number
     date: string
+    rawDate: string // 원본 날짜 (YYYY-MM-DD)
     color: string
 }
 
@@ -99,6 +157,7 @@ export function transactionToUI(
         icon: category.icon,
         amount: transaction.amount,
         date: formatDate(transaction.date),
+        rawDate: transaction.date,
         color: category.color,
     }
 }

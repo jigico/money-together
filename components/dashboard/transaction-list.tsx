@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/card"
 
 export interface Transaction {
-    id: number
+    id: number | string
     category: string
     icon: string
     amount: number

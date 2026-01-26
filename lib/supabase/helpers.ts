@@ -17,7 +17,7 @@ export async function getCurrentGroupId(): Promise<string | null> {
             .from('groups')
             .select('id')
             .eq('name', 'MVP 부부')
-            .single()
+            .single() as { data: { id: string } | null, error: any }
 
         if (error || !data) {
             console.error('Error fetching current group:', error)

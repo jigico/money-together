@@ -16,14 +16,14 @@ export async function addTransaction(data: {
 
     const { data: transaction, error } = await supabase
         .from('transactions')
-        .insert({
+        .insert([{
             group_id: groupId,
             amount: data.amount,
             category_id: data.category_id,
             member_id: data.member_id,
             description: data.description || '',
             date: data.date || new Date().toISOString().split('T')[0],
-        })
+        }])
         .select()
         .single()
 

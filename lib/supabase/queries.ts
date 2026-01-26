@@ -58,9 +58,12 @@ export async function getMemberSpending(startDate?: string, endDate?: string): P
         return []
     }
 
+    // Type assertion to ensure TypeScript knows the shape of members
+    const typedMembers = members as Member[]
+
     // 각 멤버별 지출 합계 계산
     const memberSpending = await Promise.all(
-        members.map(async (member) => {
+        typedMembers.map(async (member) => {
             let query = supabase
                 .from('transactions')
                 .select('amount')
@@ -74,7 +77,7 @@ export async function getMemberSpending(startDate?: string, endDate?: string): P
                 query = query.lte('date', endDate)
             }
 
-            const { data: transactions } = await query
+            const { data: transactions }: { data: { amount: number }[] | null } = await query
 
             const totalAmount = transactions?.reduce((sum, tx) => sum + tx.amount, 0) || 0
 
@@ -152,7 +155,7 @@ export async function getMonthlySpending(monthsBack: number = 5): Promise<{ mont
         const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0]
         const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split('T')[0]
 
-        const { data, error } = await supabase
+        const { data }: { data: { amount: number }[] | null } = await supabase
             .from('transactions')
             .select('amount')
             .eq('group_id', groupId)
@@ -209,7 +212,7 @@ export async function getTotalSpending(startDate?: string, endDate?: string): Pr
         query = query.lte('date', endDate)
     }
 
-    const { data, error } = await query
+    const { data, error }: { data: { amount: number }[] | null; error: any } = await query
 
     if (error || !data) {
         console.error('Error fetching total spending:', error)

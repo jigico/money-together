@@ -1,7 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
-import { Database } from '@/types/database'
+import type { Database } from '@/types/database'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+// Create client with proper typing
+// Using type assertion as workaround for manual Database type definitions
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    db: { schema: 'public' }
+})
