@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, TrendingUp, CreditCard, User } from "lucide-react"
+import { Home, TrendingUp, Receipt, User } from "lucide-react"
 
 interface NavItem {
     icon: React.ComponentType<{ className?: string }>
@@ -20,7 +20,7 @@ export function BottomNavigation({ className }: BottomNavigationProps) {
     const navItems: NavItem[] = [
         { icon: Home, label: '홈', href: '/' },
         { icon: TrendingUp, label: '통계', href: '/stats' },
-        { icon: CreditCard, label: '카드', href: '/cards' },
+        { icon: Receipt, label: '내역', href: '/history' },
         { icon: User, label: '마이', href: '/profile' },
     ]
 
