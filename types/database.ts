@@ -129,6 +129,7 @@ export interface TransactionUI {
     date: string
     rawDate: string // 원본 날짜 (YYYY-MM-DD)
     color: string
+    description: string
 }
 
 export interface CategoryDataUI {
@@ -159,6 +160,7 @@ export function transactionToUI(
         date: formatDate(transaction.date),
         rawDate: transaction.date,
         color: category.color,
+        description: transaction.description,
     }
 }
 
