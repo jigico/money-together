@@ -62,12 +62,18 @@ export function CategoryDonutChart({ data, className }: CategoryDonutChartProps)
 
                 {/* Legend */}
                 <div className="grid grid-cols-3 gap-x-6 gap-y-3 mt-4 w-full">
-                    {data.map((item) => (
-                        <div key={item.name} className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                            <span className="text-xs text-gray-500">{item.name}</span>
-                        </div>
-                    ))}
+                    {data.map((item) => {
+                        const percentage = ((item.value / total) * 100).toFixed(1)
+                        return (
+                            <div key={item.name} className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                                <div className="flex items-baseline gap-1 min-w-0">
+                                    <span className="text-xs text-gray-600 font-medium truncate">{item.name}</span>
+                                    <span className="text-xs text-gray-400 flex-shrink-0">{percentage}%</span>
+                                </div>
+                            </div>
+                        )
+                    })}
                 </div>
             </div>
         </Card>

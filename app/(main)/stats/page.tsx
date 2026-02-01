@@ -69,14 +69,14 @@ export default function StatsPage() {
     // 로딩 상태
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#F5F5F7] pb-28 flex items-center justify-center">
+            <div className="min-h-screen bg-[#F5F5F7] pb-32 flex items-center justify-center">
                 <div className="text-gray-500">통계 데이터를 불러오는 중...</div>
             </div>
         )
     }
 
     return (
-        <div className="min-h-screen bg-[#F5F5F7] pb-28">
+        <div className="min-h-screen bg-[#F5F5F7] pb-32">
             {/* Header with Month Selector */}
             <div className="px-5 pt-14 pb-6">
                 <div className="flex items-center justify-center gap-4">
