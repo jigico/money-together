@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { ChevronLeft, X, ChevronDown, MoreHorizontal, Calendar } from "lucide-react"
-import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
 import { NumberKeypad } from "@/components/entry/number-keypad"
 import { SpenderToggle } from "@/components/entry/spender-toggle"
@@ -201,12 +200,13 @@ export default function TransactionDetailPage() {
         <div className="min-h-screen bg-[#F5F5F7] flex flex-col max-w-md mx-auto">
             {/* Header - 패딩 조정 */}
             <header className="flex items-center justify-between px-4 pt-2 pb-2">
-                <Link
-                    href="/history"
+                <button
+                    type="button"
+                    onClick={() => router.back()}
                     className="w-10 h-10 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-sm active:scale-95 transition-transform"
                 >
                     <ChevronLeft className="w-5 h-5 text-gray-900" />
-                </Link>
+                </button>
                 <h1 className="text-lg font-semibold text-gray-900">내역 수정</h1>
                 <button
                     type="button"
