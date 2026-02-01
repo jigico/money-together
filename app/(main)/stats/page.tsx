@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Card } from "@/components/ui/card"
 import { ChevronLeft, ChevronRight, TrendingDown, TrendingUp } from "lucide-react"
 import { CategoryDonutChart, type CategoryData } from "@/components/stats/category-donut-chart"
@@ -63,27 +63,37 @@ export default function StatsPage() {
         fetchData()
     }, [currentMonth])
 
-    const prevMonth = () => {
+    // 월 이동 함수 메모이제이션
+    const prevMonth = useCallback(() => {
         setCurrentMonth((prev) => {
             if (prev.month === 1) return { year: prev.year - 1, month: 12 }
             return { ...prev, month: prev.month - 1 }
         })
-    }
+    }, [])
 
-    const nextMonth = () => {
+    const nextMonth = useCallback(() => {
         setCurrentMonth((prev) => {
             if (prev.month === 12) return { year: prev.year + 1, month: 1 }
             return { ...prev, month: prev.month + 1 }
         })
-    }
+    }, [])
 
-    // 전월 대비 계산
-    const difference = totalSpending - previousMonthSpending
-    const percentageChange = previousMonthSpending > 0
-        ? ((difference / previousMonthSpending) * 100).toFixed(1)
-        : '0.0'
-    const isIncrease = difference > 0
-    const isDecrease = difference < 0
+    // 전월 대비 계산 - useMemo로 최적화
+    const monthComparison = useMemo(() => {
+        const difference = totalSpending - previousMonthSpending
+        const percentageChange = previousMonthSpending > 0
+            ? ((difference / previousMonthSpending) * 100).toFixed(1)
+            : '0.0'
+        const isIncrease = difference > 0
+        const isDecrease = difference < 0
+
+        return {
+            difference,
+            percentageChange,
+            isIncrease,
+            isDecrease,
+        }
+    }, [totalSpending, previousMonthSpending])
 
     // 로딩 상태 - 스켈레톤 UI
     if (loading) {
@@ -156,20 +166,20 @@ export default function StatsPage() {
                             ₩{totalSpending.toLocaleString()}
                         </span>
                         {previousMonthSpending > 0 && totalSpending !== previousMonthSpending && (
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${isDecrease ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${monthComparison.isDecrease ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                                 }`}>
-                                {isDecrease ? (
+                                {monthComparison.isDecrease ? (
                                     <TrendingDown className="w-3 h-3" />
                                 ) : (
                                     <TrendingUp className="w-3 h-3" />
                                 )}
-                                {Math.abs(parseFloat(percentageChange))}%
+                                {Math.abs(parseFloat(monthComparison.percentageChange))}%
                             </span>
                         )}
                     </div>
                     {previousMonthSpending > 0 && (
                         <p className="text-xs text-gray-500 mt-2">
-                            지난달 대비 ₩{Math.abs(difference).toLocaleString()} {isDecrease ? '감소' : isIncrease ? '증가' : '변동 없음'}
+                            지난달 대비 ₩{Math.abs(monthComparison.difference).toLocaleString()} {monthComparison.isDecrease ? '감소' : monthComparison.isIncrease ? '증가' : '변동 없음'}
                         </p>
                     )}
                 </Card>
