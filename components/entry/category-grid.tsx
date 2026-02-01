@@ -1,6 +1,6 @@
 "use client"
 
-import { Utensils, Car, Coffee, ShoppingBag, Home, MoreHorizontal, LucideIcon } from "lucide-react"
+import { Utensils, Car, Coffee, ShoppingBasket, Home, Hospital, MoreHorizontal, LucideIcon } from "lucide-react"
 import type { Category } from "@/types/database"
 
 // 카테고리 이름별 아이콘 매핑
@@ -8,8 +8,9 @@ const iconMap: Record<string, LucideIcon> = {
     '식비': Utensils,
     '교통': Car,
     '카페': Coffee,
-    '쇼핑': ShoppingBag,
+    '생활': ShoppingBasket,
     '주거': Home,
+    '병원': Hospital,
     '기타': MoreHorizontal,
 }
 
@@ -18,8 +19,9 @@ const colorMap: Record<string, string> = {
     '식비': 'bg-orange-100 text-orange-600',
     '교통': 'bg-blue-100 text-blue-600',
     '카페': 'bg-amber-100 text-amber-700',
-    '쇼핑': 'bg-pink-100 text-pink-600',
+    '생활': 'bg-purple-100 text-purple-600',
     '주거': 'bg-green-100 text-green-600',
+    '병원': 'bg-pink-100 text-pink-600',
     '기타': 'bg-gray-100 text-gray-600',
 }
 
@@ -50,8 +52,8 @@ export function CategoryGrid({
                             type="button"
                             onClick={() => onCategorySelect(category.id)}
                             className={`flex flex-col items-center gap-2 p-4 rounded-3xl transition-all duration-200 active:scale-95 ${isSelected
-                                    ? "bg-[#0047AB] text-white shadow-lg shadow-blue-900/25"
-                                    : "bg-white shadow-sm hover:shadow-md"
+                                ? "bg-[#0047AB] text-white shadow-lg shadow-blue-900/25"
+                                : "bg-white shadow-sm hover:shadow-md"
                                 }`}
                         >
                             <div

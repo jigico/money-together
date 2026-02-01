@@ -264,8 +264,9 @@ function getIconForCategory(categoryName: string): string {
         '식비': '🍽️',
         '교통': '🚗',
         '카페': '☕',
-        '쇼핑': '🛍️',
+        '생활': '🧺',
         '주거': '🏠',
+        '병원': '🏥',
         '기타': '📦',
     }
     return iconMap[categoryName] || '📦'
@@ -277,8 +278,9 @@ function getCategoryColorClass(categoryName: string): string {
         '식비': 'bg-rose-100',
         '교통': 'bg-blue-100',
         '카페': 'bg-amber-100',
-        '쇼핑': 'bg-purple-100',
+        '생활': 'bg-purple-100',
         '주거': 'bg-green-100',
+        '병원': 'bg-pink-100',
         '기타': 'bg-gray-100',
     }
     return colorMap[categoryName] || 'bg-gray-100'

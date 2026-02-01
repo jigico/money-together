@@ -1,18 +1,20 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronLeft, ChevronRight, Plus, CreditCard, Home, TrendingUp, User } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, CreditCard, Home, TrendingUp, User, Calendar } from "lucide-react"
 import Link from "next/link"
+import { motion, AnimatePresence } from "framer-motion"
 import { getTransactions } from "@/lib/supabase/queries"
 import type { TransactionUI } from "@/types/database"
-import { Utensils, Car, Coffee, ShoppingBag, Home as HomeIcon, MoreHorizontal, Heart, Gamepad2, Plane } from "lucide-react"
+import { Utensils, Car, Coffee, ShoppingBasket, Home as HomeIcon, Hospital, MoreHorizontal, Heart, Gamepad2, Plane } from "lucide-react"
 
 const iconMap: Record<string, any> = {
     '식비': Utensils,
     '교통': Car,
     '카페': Coffee,
-    '쇼핑': ShoppingBag,
+    '생활': ShoppingBasket,
     '주거': HomeIcon,
+    '병원': Hospital,
     '건강': Heart,
     '여가': Gamepad2,
     '여행': Plane,
@@ -23,10 +25,11 @@ const colorMap: Record<string, string> = {
     '식비': 'bg-orange-100 text-orange-600',
     '교통': 'bg-blue-100 text-blue-600',
     '카페': 'bg-amber-100 text-amber-700',
-    '쇼핑': 'bg-pink-100 text-pink-600',
+    '생활': 'bg-purple-100 text-purple-600',
     '주거': 'bg-green-100 text-green-600',
+    '병원': 'bg-pink-100 text-pink-600',
     '건강': 'bg-red-100 text-red-600',
-    '여가': 'bg-purple-100 text-purple-600',
+    '여가': 'bg-indigo-100 text-indigo-600',
     '여행': 'bg-cyan-100 text-cyan-600',
     '기타': 'bg-gray-100 text-gray-600',
 }
@@ -71,9 +74,48 @@ function groupByDate(transactions: TransactionUI[]): GroupedTransaction[] {
         }))
 }
 
+// 타임라인 생성 함수 (현재+2년부터 과거로)
+function generateTimeline() {
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth() + 1 // 1-12
+    const endYear = currentYear + 2
+    const startYear = 2020 // 시작 년도
+
+    const timeline: { year: number, month: number, label: string }[] = []
+
+    // 종료 년월부터 시작 년월까지 역순으로
+    for (let year = endYear; year >= startYear; year--) {
+        // 각 년도의 시작 월과 끝 월 결정
+        let monthStart = 12
+        let monthEnd = 1
+
+        // 미래 년도(endYear)는 현재 월까지만
+        if (year === endYear) {
+            monthStart = currentMonth
+        }
+
+        // 현재 년도는 12월까지
+        if (year === currentYear) {
+            monthStart = 12
+        }
+
+        for (let month = monthStart; month >= monthEnd; month--) {
+            timeline.push({
+                year,
+                month,
+                label: `${year}년 ${month}월`
+            })
+        }
+    }
+
+    return timeline
+}
+
 export default function HistoryPage() {
     const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
     const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
+    const [isTimelineOpen, setIsTimelineOpen] = useState(false)
     const [transactions, setTransactions] = useState<TransactionUI[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -114,8 +156,45 @@ export default function HistoryPage() {
         }
     }
 
+    const selectDate = (year: number, month: number) => {
+        setCurrentYear(year)
+        setCurrentMonth(month - 1) // month는 1-12, currentMonth는 0-11
+        setIsTimelineOpen(false)
+    }
+
     const groupedTransactions = groupByDate(transactions)
     const months = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]
+    const timeline = generateTimeline()
+
+    // Calculate total amount from all transactions
+    const totalAmount = transactions.reduce((sum, transaction) => sum + transaction.amount, 0)
+
+    // Animated Counter Component
+    const AnimatedCounter = ({ value }: { value: number }) => {
+        const [displayValue, setDisplayValue] = useState(0)
+
+        useEffect(() => {
+            const duration = 800 // ms
+            const steps = 60
+            const stepValue = value / steps
+            const stepDuration = duration / steps
+            let currentStep = 0
+
+            const timer = setInterval(() => {
+                currentStep++
+                if (currentStep <= steps) {
+                    setDisplayValue(Math.floor(stepValue * currentStep))
+                } else {
+                    setDisplayValue(value)
+                    clearInterval(timer)
+                }
+            }, stepDuration)
+
+            return () => clearInterval(timer)
+        }, [value])
+
+        return <>{displayValue.toLocaleString()}</>
+    }
 
     if (loading) {
         return (
@@ -137,7 +216,11 @@ export default function HistoryPage() {
                         <ChevronLeft className="w-5 h-5 text-gray-500" />
                     </button>
 
-                    <button className="flex items-center gap-1 px-3 py-1.5 rounded-xl hover:bg-white active:scale-95 transition-all">
+                    <button
+                        onClick={() => setIsTimelineOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-white active:scale-95 transition-all"
+                    >
+                        <Calendar className="w-4 h-4 text-gray-400" />
                         <span className="text-base font-semibold text-gray-900 tracking-tight">
                             {currentYear}년 {months[currentMonth]}
                         </span>
@@ -150,6 +233,21 @@ export default function HistoryPage() {
                         <ChevronRight className="w-5 h-5 text-gray-500" />
                     </button>
                 </div>
+            </div>
+
+            {/* Total Spending Summary */}
+            <div className="px-5 pt-6 pb-2">
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                    className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100/50"
+                >
+                    <p className="text-sm text-gray-500 mb-2 font-medium">이번 달 총 지출</p>
+                    <p className="text-3xl font-bold text-[#0047AB] tracking-tight">
+                        <AnimatedCounter value={totalAmount} />원
+                    </p>
+                </motion.div>
             </div>
 
             {/* Transaction List */}
@@ -207,6 +305,65 @@ export default function HistoryPage() {
                     ))
                 )}
             </div>
+
+            {/* Unified Timeline Scroll Modal */}
+            <AnimatePresence>
+                {isTimelineOpen && (
+                    <>
+                        {/* Backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50"
+                            onClick={() => setIsTimelineOpen(false)}
+                        />
+
+                        {/* Timeline Modal */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                            className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 max-w-md mx-auto"
+                        >
+                            <div className="bg-white/90 backdrop-blur-2xl rounded-3xl shadow-2xl border border-gray-200/50 overflow-hidden">
+                                {/* Header */}
+                                <div className="px-6 py-4 border-b border-gray-200/50">
+                                    <h2 className="text-lg font-semibold text-gray-900">날짜 선택</h2>
+                                </div>
+
+                                {/* Scrollable Timeline */}
+                                <div className="max-h-[400px] overflow-y-auto overscroll-contain">
+                                    <div className="px-3 py-2">
+                                        {timeline.map((item, index) => {
+                                            const isSelected = item.year === currentYear && item.month === currentMonth + 1
+                                            return (
+                                                <motion.button
+                                                    key={`${item.year}-${item.month}`}
+                                                    initial={{ opacity: 0, x: -10 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    transition={{ delay: index * 0.005 }}
+                                                    onClick={() => selectDate(item.year, item.month)}
+                                                    className={`w-full text-left px-5 py-3.5 mb-1 rounded-xl transition-all duration-200 active:scale-[0.98] ${isSelected
+                                                        ? 'bg-[#0047AB] text-white shadow-lg shadow-blue-900/25'
+                                                        : 'hover:bg-gray-100 text-gray-700'
+                                                        }`}
+                                                >
+                                                    <span className={`text-[15px] font-semibold ${isSelected ? 'text-white' : 'text-gray-900'}`}>
+                                                        {item.label}
+                                                    </span>
+                                                </motion.button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
 
             {/* Floating Action Button */}
             <Link
