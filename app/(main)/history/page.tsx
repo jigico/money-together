@@ -273,9 +273,10 @@ export default function HistoryPage() {
                                     const colorClass = colorMap[item.category] || 'bg-gray-100 text-gray-600'
 
                                     return (
-                                        <div
+                                        <Link
                                             key={item.id}
-                                            className={`px-4 py-4 flex items-center gap-4 active:bg-gray-50 transition-colors ${index !== items.length - 1 ? "border-b border-gray-100" : ""
+                                            href={`/history/${item.id}`}
+                                            className={`px-4 py-4 flex items-center gap-4 active:bg-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer ${index !== items.length - 1 ? "border-b border-gray-100" : ""
                                                 }`}
                                         >
                                             {/* Category Icon */}
@@ -297,7 +298,7 @@ export default function HistoryPage() {
                                             <p className="font-bold text-gray-900 text-base flex-shrink-0">
                                                 {item.amount.toLocaleString()}원
                                             </p>
-                                        </div>
+                                        </Link>
                                     )
                                 })}
                             </div>

@@ -39,6 +39,41 @@ export async function getTransactions(startDate?: string, endDate?: string) {
     return data.map((tx: any) => transactionToUI(tx, tx.category))
 }
 
+// 단일 거래 내역 가져오기 (ID로 조회)
+export async function getSingleTransaction(id: string) {
+    const groupId = await getCurrentGroupId()
+    if (!groupId) {
+        console.error('No group ID found')
+        return null
+    }
+
+    const { data, error } = await supabase
+        .from('transactions')
+        .select(`
+      *,
+      category:categories(*),
+      member:members(*)
+    `)
+        .eq('id', id)
+        .eq('group_id', groupId)
+        .single()
+
+    if (error) {
+        console.error('Error fetching transaction:', error)
+        return null
+    }
+
+    // 타입 단언을 사용하여 데이터 반환
+    const transaction = data as any
+
+    return {
+        ...transaction,
+        ui: transactionToUI(transaction, transaction.category)
+    }
+}
+
+
+
 // 멤버별 지출 합계 (그룹 필터링 포함)
 export async function getMemberSpending(startDate?: string, endDate?: string): Promise<MemberSpendingUI[]> {
     const groupId = await getCurrentGroupId()
