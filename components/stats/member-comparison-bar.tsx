@@ -25,6 +25,16 @@ export function MemberComparisonBar({ members, className }: MemberComparisonBarP
 
     if (!husband || !wife) return null
 
+    // 지출이 0일 때 처리
+    if (totalSpending === 0) {
+        return (
+            <Card className={`bg-white rounded-3xl p-6 shadow-sm border-0 ${className || ''}`}>
+                <h2 className="text-base font-semibold text-gray-900 mb-6">멤버별 지출 비교</h2>
+                <p className="text-center text-gray-400 py-8">이번 달 지출 데이터가 없습니다</p>
+            </Card>
+        )
+    }
+
     const husbandPercentage = (husband.amount / totalSpending) * 100
     const wifePercentage = (wife.amount / totalSpending) * 100
 
