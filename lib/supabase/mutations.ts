@@ -6,7 +6,7 @@ export async function addTransaction(data: {
     amount: number
     category_id: string
     member_id: string
-    description?: string
+    description: string
     date?: string
 }) {
     const groupId = await getCurrentGroupId()
@@ -21,7 +21,7 @@ export async function addTransaction(data: {
             amount: data.amount,
             category_id: data.category_id,
             member_id: data.member_id,
-            description: data.description || '',
+            description: data.description,
             date: data.date || new Date().toISOString().split('T')[0],
         }])
         .select()

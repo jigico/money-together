@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   amount INTEGER NOT NULL,
   category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
   member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-  description TEXT DEFAULT '',
+  description TEXT NOT NULL,
   date DATE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -78,8 +78,9 @@ INSERT INTO categories (name, icon, color) VALUES
   ('식비', '🍽️', '#f87171'),
   ('교통', '🚗', '#60a5fa'),
   ('카페', '☕', '#fbbf24'),
-  ('쇼핑', '🛍️', '#a78bfa'),
+  ('생활', '🧺', '#a78bfa'),
   ('주거', '🏠', '#34d399'),
+  ('병원', '🏥', '#ec4899'),
   ('기타', '📦', '#9ca3af')
 ON CONFLICT (name) DO NOTHING;
 
@@ -110,14 +111,14 @@ BEGIN
   SELECT id INTO food_id FROM categories WHERE name = '식비' LIMIT 1;
   SELECT id INTO transport_id FROM categories WHERE name = '교통' LIMIT 1;
   SELECT id INTO cafe_id FROM categories WHERE name = '카페' LIMIT 1;
-  SELECT id INTO shopping_id FROM categories WHERE name = '쇼핑' LIMIT 1;
+  SELECT id INTO shopping_id FROM categories WHERE name = '생활' LIMIT 1;
 
   -- 샘플 거래 추가 (MVP 그룹에만)
   INSERT INTO transactions (group_id, amount, category_id, member_id, description, date) VALUES
     (mvp_group_id, 45000, food_id, husband_id, '저녁 식사', CURRENT_DATE),
     (mvp_group_id, 12000, transport_id, wife_id, '택시', CURRENT_DATE),
     (mvp_group_id, 8500, cafe_id, husband_id, '스타벅스', CURRENT_DATE - 1),
-    (mvp_group_id, 125000, shopping_id, wife_id, '옷 쇼핑', CURRENT_DATE - 1),
+    (mvp_group_id, 125000, shopping_id, wife_id, '생활용품 구매', CURRENT_DATE - 1),
     (mvp_group_id, 15000, food_id, husband_id, '편의점', CURRENT_DATE - 3);
 END $$;
 

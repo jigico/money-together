@@ -9,15 +9,16 @@ import { SpenderToggle } from "@/components/entry/spender-toggle"
 import { getCategories, getMembers } from "@/lib/supabase/queries"
 import { addTransaction } from "@/lib/supabase/mutations"
 import type { Category, Member } from "@/types/database"
-import { Utensils, Car, Coffee, ShoppingBag, Home, Heart, Gamepad2, Plane } from "lucide-react"
+import { Utensils, Car, Coffee, ShoppingBasket, Home, Hospital, Heart, Gamepad2, Plane } from "lucide-react"
 
 // 카테고리 이름별 아이콘 매핑
 const iconMap: Record<string, any> = {
     '식비': Utensils,
     '교통': Car,
     '카페': Coffee,
-    '쇼핑': ShoppingBag,
+    '생활': ShoppingBasket,
     '주거': Home,
+    '병원': Hospital,
     '건강': Heart,
     '여가': Gamepad2,
     '여행': Plane,
@@ -29,10 +30,11 @@ const colorMap: Record<string, string> = {
     '식비': 'bg-orange-100 text-orange-600',
     '교통': 'bg-blue-100 text-blue-600',
     '카페': 'bg-amber-100 text-amber-700',
-    '쇼핑': 'bg-pink-100 text-pink-600',
+    '생활': 'bg-purple-100 text-purple-600',
     '주거': 'bg-green-100 text-green-600',
+    '병원': 'bg-pink-100 text-pink-600',
     '건강': 'bg-red-100 text-red-600',
-    '여가': 'bg-purple-100 text-purple-600',
+    '여가': 'bg-indigo-100 text-indigo-600',
     '여행': 'bg-cyan-100 text-cyan-600',
     '기타': 'bg-gray-100 text-gray-600',
 }
@@ -139,7 +141,7 @@ export default function AddPage() {
         return new Date(year, month + 1, 0).getDate()
     }
 
-    const isValid = amount.length > 0 && selectedCategory !== null && !saving
+    const isValid = amount.length > 0 && selectedCategory !== null && description.trim().length > 0 && !saving
 
     if (loading) {
         return (
@@ -247,7 +249,7 @@ export default function AddPage() {
                         type="text"
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        placeholder="설명을 입력하세요 (선택)"
+                        placeholder="설명을 입력하세요"
                         className="w-full bg-transparent text-gray-900 placeholder:text-gray-400 outline-none text-sm"
                     />
                 </div>
@@ -367,8 +369,8 @@ export default function AddPage() {
                                         type="button"
                                         onClick={() => handleSelectCategory(category.id)}
                                         className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-all duration-200 active:scale-95 ${isSelected
-                                                ? "bg-[#0047AB] shadow-lg shadow-blue-900/25"
-                                                : "bg-gray-50 hover:bg-gray-100"
+                                            ? "bg-[#0047AB] shadow-lg shadow-blue-900/25"
+                                            : "bg-gray-50 hover:bg-gray-100"
                                             }`}
                                     >
                                         <div

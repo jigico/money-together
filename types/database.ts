@@ -23,7 +23,7 @@ export interface Database {
                     amount: number
                     category_id: string
                     member_id: string
-                    description?: string
+                    description: string
                     date: string
                 }
                 Update: Partial<{
@@ -97,7 +97,7 @@ export interface Transaction {
     amount: number
     category_id: string
     member_id: string
-    description?: string
+    description: string
     created_at: string
     date: string
 }
