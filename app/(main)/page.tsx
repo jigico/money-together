@@ -6,12 +6,15 @@ import { SpendingSummaryCard } from "@/components/dashboard/spending-summary-car
 import { QuickStatsGrid } from "@/components/dashboard/quick-stats-grid"
 import { TransactionList, type Transaction } from "@/components/dashboard/transaction-list"
 import { FloatingActionButton } from "@/components/dashboard/floating-action-button"
-import { getTransactions, getTotalSpending } from "@/lib/supabase/queries"
+import { getTransactions, getTotalSpending, getMembers } from "@/lib/supabase/queries"
+import type { Member } from "@/types/database"
 
 export default function MoneyTogetherDashboard() {
     const [transactions, setTransactions] = useState<Transaction[]>([])
+    const [members, setMembers] = useState<Member[]>([])
     const [totalSpent, setTotalSpent] = useState(0)
     const [todaySpent, setTodaySpent] = useState(0)
+    const [monthlyChange, setMonthlyChange] = useState<number | null>(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -25,19 +28,36 @@ export default function MoneyTogetherDashboard() {
                 const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
                     .toISOString().split('T')[0]
 
+                // 전월의 시작일과 종료일
+                const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+                    .toISOString().split('T')[0]
+                const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+                    .toISOString().split('T')[0]
+
                 // 오늘 날짜
                 const today = now.toISOString().split('T')[0]
 
                 // 데이터 가져오기
-                const [allTransactions, monthlyTotal, dailyTotal] = await Promise.all([
+                const [allTransactions, monthlyTotal, lastMonthTotal, dailyTotal, membersData] = await Promise.all([
                     getTransactions(), // 최근 거래 (제한 없음, 최신순)
                     getTotalSpending(startOfMonth, endOfMonth), // 이번 달 총 지출
+                    getTotalSpending(startOfLastMonth, endOfLastMonth), // 전월 총 지출
                     getTotalSpending(today, today), // 오늘 지출
+                    getMembers(), // 멤버 목록
                 ])
 
                 setTransactions(allTransactions.slice(0, 5)) // 최근 5개만 표시
                 setTotalSpent(monthlyTotal)
                 setTodaySpent(dailyTotal)
+                setMembers(membersData)
+
+                // 전월 대비 계산
+                if (lastMonthTotal > 0) {
+                    const change = ((monthlyTotal - lastMonthTotal) / lastMonthTotal) * 100
+                    setMonthlyChange(Math.round(change * 10) / 10) // 소수점 1자리
+                } else {
+                    setMonthlyChange(null) // 전월 데이터 없음
+                }
             } catch (error) {
                 console.error('Error fetching dashboard data:', error)
             } finally {
@@ -63,7 +83,7 @@ export default function MoneyTogetherDashboard() {
             <div className="px-5 pt-14 pb-8">
                 <div className="flex items-center justify-between mb-8">
                     <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">머니투게더</h1>
-                    <UserAvatars />
+                    <UserAvatars members={members} />
                 </div>
 
                 {/* Total Spending Card */}
@@ -71,7 +91,7 @@ export default function MoneyTogetherDashboard() {
             </div>
 
             {/* Quick Stats */}
-            <QuickStatsGrid monthlyChange={-12.5} todaySpent={todaySpent} className="px-5 mb-8" />
+            <QuickStatsGrid monthlyChange={monthlyChange} todaySpent={todaySpent} className="px-5 mb-8" />
 
             {/* Recent Transactions */}
             <TransactionList transactions={transactions} className="px-5" />

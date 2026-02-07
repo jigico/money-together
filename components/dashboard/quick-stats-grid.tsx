@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card"
 import { TrendingUp, CreditCard } from "lucide-react"
 
 interface QuickStatsGridProps {
-    monthlyChange: number
+    monthlyChange: number | null
     todaySpent: number
     className?: string
 }
@@ -18,7 +18,11 @@ export function QuickStatsGrid({ monthlyChange, todaySpent, className }: QuickSt
                 </div>
                 <p className="text-xs text-gray-500 mb-1">전월 대비</p>
                 <p className="text-xl font-bold text-gray-900">
-                    {monthlyChange > 0 ? '+' : ''}{monthlyChange}%
+                    {monthlyChange !== null ? (
+                        `${monthlyChange > 0 ? '+' : ''}${monthlyChange}%`
+                    ) : (
+                        '0%'
+                    )}
                 </p>
             </Card>
             <Card className="bg-white rounded-2xl p-5 shadow-sm border-0">

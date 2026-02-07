@@ -1,20 +1,31 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import type { Member } from "@/types/database"
 
 interface UserAvatarsProps {
+    members: Member[]
     className?: string
 }
 
-export function UserAvatars({ className }: UserAvatarsProps) {
+export function UserAvatars({ members, className }: UserAvatarsProps) {
+    if (members.length === 0) {
+        return null
+    }
+
     return (
         <div className={`flex items-center gap-2 ${className || ''}`}>
-            <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
-                <AvatarImage src="/placeholder.svg" />
-                <AvatarFallback className="bg-[#0047AB] text-white text-xs">남</AvatarFallback>
-            </Avatar>
-            <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm -ml-3">
-                <AvatarImage src="/placeholder.svg" />
-                <AvatarFallback className="bg-rose-400 text-white text-xs">여</AvatarFallback>
-            </Avatar>
+            {members.map((member, index) => (
+                <Avatar
+                    key={member.id}
+                    className={`h-8 w-8 ring-2 ring-white shadow-sm ${index > 0 ? '-ml-3' : ''}`}
+                >
+                    <AvatarFallback
+                        className="text-white text-xs font-semibold"
+                        style={{ backgroundColor: member.color }}
+                    >
+                        {member.name.charAt(0)}
+                    </AvatarFallback>
+                </Avatar>
+            ))}
         </div>
     )
 }
