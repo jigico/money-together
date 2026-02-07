@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { ChevronLeft, X, ChevronDown, MoreHorizontal, Calendar } from "lucide-react"
 import { useRouter, useParams } from "next/navigation"
 import { NumberKeypad } from "@/components/entry/number-keypad"
-import { SpenderToggle } from "@/components/entry/spender-toggle"
+import { MemberSelector } from "@/components/entry/member-selector"
 import { getCategories, getMembers, getSingleTransaction } from "@/lib/supabase/queries"
 import { updateTransaction, deleteTransaction } from "@/lib/supabase/mutations"
 import type { Category, Member } from "@/types/database"
@@ -44,7 +44,7 @@ export default function TransactionDetailPage() {
     const transactionId = params.id as string
 
     const [amount, setAmount] = useState("")
-    const [spender, setSpender] = useState<"husband" | "wife">("husband")
+    const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
     const [description, setDescription] = useState("")
     const [selectedDate, setSelectedDate] = useState(new Date())
@@ -76,11 +76,11 @@ export default function TransactionDetailPage() {
                     setDescription(transactionData.description)
                     setSelectedDate(new Date(transactionData.date))
 
-                    // 멤버 정보로 spender 설정
+                    // 멤버 정보로 selectedMemberId 설정
                     if (membersData && membersData.length > 0) {
                         const member = membersData.find((m: Member) => m.id === transactionData.member_id)
                         if (member) {
-                            setSpender(member.name === "남편" ? "husband" : "wife")
+                            setSelectedMemberId(member.id)
                         }
                     }
                 } else {
@@ -134,18 +134,14 @@ export default function TransactionDetailPage() {
 
         setSaving(true)
         try {
-            const selectedMember = members.find((m) =>
-                spender === "husband" ? m.name === "남편" : m.name === "아내"
-            )
-
-            if (!selectedMember) {
-                throw new Error('멤버를 찾을 수 없습니다')
+            if (!selectedMemberId) {
+                throw new Error('멤버를 선택해주세요')
             }
 
             await updateTransaction(transactionId, {
                 amount: Number(amount),
                 category_id: selectedCategory,
-                member_id: selectedMember.id,
+                member_id: selectedMemberId,
                 description: description,
                 date: formatDateForDB(selectedDate),
             })
@@ -231,12 +227,14 @@ export default function TransactionDetailPage() {
                 </div>
             </div>
 
-            {/* Spender Toggle */}
-            <SpenderToggle
-                spender={spender}
-                onSpenderChange={setSpender}
-                className="px-6 pb-4 flex-shrink-0"
-            />
+            {/* Member Selection */}
+            <div className="px-6 pb-4 flex-shrink-0">
+                <MemberSelector
+                    members={members}
+                    selectedMemberId={selectedMemberId}
+                    onSelect={setSelectedMemberId}
+                />
+            </div>
 
             {/* Category & Date & Description */}
             <div className="px-6 pb-4 flex-shrink-0 space-y-3">

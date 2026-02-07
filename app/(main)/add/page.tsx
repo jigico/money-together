@@ -5,6 +5,7 @@ import { ChevronLeft, X, ChevronDown, MoreHorizontal, Calendar } from "lucide-re
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { NumberKeypad } from "@/components/entry/number-keypad"
+import { MemberSelector } from "@/components/entry/member-selector"
 import { getCategories, getMembers } from "@/lib/supabase/queries"
 import { addTransaction } from "@/lib/supabase/mutations"
 import type { Category, Member } from "@/types/database"
@@ -188,23 +189,11 @@ export default function AddPage() {
 
             {/* Member Selection */}
             <div className="px-6 pb-4 flex-shrink-0">
-                <div className="flex gap-3 justify-center">
-                    {members.map((member) => (
-                        <button
-                            key={member.id}
-                            onClick={() => setSelectedMemberId(member.id)}
-                            className={`
-                                flex-1 py-3 px-4 rounded-xl font-semibold transition-all
-                                ${selectedMemberId === member.id
-                                    ? 'bg-blue-600 text-white shadow-lg scale-105'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }
-                            `}
-                        >
-                            {member.name}
-                        </button>
-                    ))}
-                </div>
+                <MemberSelector
+                    members={members}
+                    selectedMemberId={selectedMemberId}
+                    onSelect={setSelectedMemberId}
+                />
             </div>
 
             {/* Category & Date & Description */}
