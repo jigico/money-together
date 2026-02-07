@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getCurrentGroupInfo } from "@/lib/supabase/queries"
+import { getCurrentGroupInfo } from "@/lib/supabase/group-info"
 import { Copy, Check, Share2, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
@@ -45,11 +45,9 @@ export default function InvitePage() {
                     text: shareText,
                 })
             } catch (error) {
-                // 사용자가 공유를 취소하거나 실패한 경우
                 console.log('Share cancelled or failed:', error)
             }
         } else {
-            // 공유 API가 지원되지 않으면 클립보드에 복사
             navigator.clipboard.writeText(shareText)
             alert('초대 메시지가 클립보드에 복사되었습니다!')
         }
@@ -69,7 +67,6 @@ export default function InvitePage() {
 
     return (
         <div className="min-h-screen bg-[#F5F5F7] pb-24">
-            {/* Header */}
             <div className="bg-white px-5 pt-14 pb-6 shadow-sm">
                 <div className="flex items-center gap-3 mb-6">
                     <Link href="/" className="p-2 -ml-2 hover:bg-gray-100 rounded-full">
@@ -79,9 +76,7 @@ export default function InvitePage() {
                 </div>
             </div>
 
-            {/* Content */}
             <div className="px-5 pt-8">
-                {/* Group Info Card */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">
                     <p className="text-sm text-gray-500 mb-2">그룹명</p>
                     <p className="text-xl font-semibold text-gray-900 mb-6">{groupInfo.name}</p>
@@ -122,7 +117,6 @@ export default function InvitePage() {
                     </div>
                 </div>
 
-                {/* Instructions */}
                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 shadow-sm">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">초대 방법</h3>
                     <div className="space-y-3">
