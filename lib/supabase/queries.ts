@@ -273,7 +273,7 @@ export async function getCategories() {
 }
 
 // 현재 그룹의 멤버 목록 가져오기
-export async function getMembers() {
+export async function getMembers(): Promise<Member[]> {
     const groupId = await getCurrentGroupId()
     if (!groupId) {
         console.error('No group ID found')
@@ -290,7 +290,7 @@ export async function getMembers() {
         return []
     }
 
-    return data
+    return data || []
 }
 
 // 카테고리별 아이콘 매핑

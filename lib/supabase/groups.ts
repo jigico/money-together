@@ -19,16 +19,14 @@ export async function createGroup(
     memberName: string
 ): Promise<GroupResult> {
     try {
-        console.log('[createGroup] Starting with:', { userId, groupName, memberName })
 
         // 1. 그룹 생성 (invite_code는 트리거로 자동 생성)
         const { data: group, error: groupError } = await supabase
             .from('groups')
-            .insert({ name: groupName })
+            .insert({ name: groupName } as any)
             .select('id, invite_code')
             .single()
 
-        console.log('[createGroup] Group creation result:', { group, groupError })
 
         if (groupError || !group) {
             return {
@@ -48,13 +46,9 @@ export async function createGroup(
             bg_color: '#3B82F6',
         }
 
-        console.log('[createGroup] Inserting member:', memberData)
-
         const { error: memberError } = await supabase
             .from('members')
-            .insert(memberData)
-
-        console.log('[createGroup] Member insert error:', memberError)
+            .insert(memberData as any)
 
         if (memberError) {
             // 멤버 등록 실패 시 그룹도 삭제 (롤백)
@@ -67,7 +61,6 @@ export async function createGroup(
             }
         }
 
-        console.log('[createGroup] Success!')
         return {
             success: true,
             groupId: group.id,
@@ -134,7 +127,7 @@ export async function joinGroupByCode(
                 avatar: '👤',
                 color: '#10B981',
                 bg_color: '#10B981',
-            })
+            } as any)
 
         if (memberError) {
             return {

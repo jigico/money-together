@@ -12,8 +12,8 @@ export interface Database {
         Tables: {
             groups: {
                 Row: Group
-                Insert: Omit<Group, 'id' | 'created_at'>
-                Update: Partial<Omit<Group, 'id' | 'created_at'>>
+                Insert: Omit<Group, 'id' | 'created_at' | 'invite_code'>
+                Update: Partial<Omit<Group, 'id' | 'created_at' | 'invite_code'>>
                 Relationships: []
             }
             transactions: {
@@ -87,6 +87,7 @@ export interface Database {
 export interface Group {
     id: string
     name: string
+    invite_code: string  // 그룹 초대 코드
     created_at: string
 }
 
@@ -114,7 +115,9 @@ export interface Category {
 export interface Member {
     id: string
     group_id: string
+    user_id: string | null  // Supabase Auth 사용자 ID
     name: string
+    role: 'admin' | 'member'  // 관리자 또는 일반 멤버
     avatar: string
     color: string
     bg_color: string
