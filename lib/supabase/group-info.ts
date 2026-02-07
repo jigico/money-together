@@ -19,5 +19,5 @@ export async function getCurrentGroupInfo() {
         return null
     }
 
-    return data
+    return data as { id: string; name: string; invite_code: string | null; created_at: string } | null
 }

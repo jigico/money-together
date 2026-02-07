@@ -16,6 +16,7 @@ export async function addTransaction(data: {
 
     const { data: transaction, error } = await supabase
         .from('transactions')
+        // @ts-ignore
         .insert([{
             group_id: groupId,
             amount: data.amount,
@@ -23,7 +24,7 @@ export async function addTransaction(data: {
             member_id: data.member_id,
             description: data.description,
             date: data.date || new Date().toISOString().split('T')[0],
-        }])
+        }] as any)
         .select()
         .single()
 
@@ -45,7 +46,8 @@ export async function updateTransaction(id: string, data: Partial<{
 }>) {
     const { data: transaction, error } = await supabase
         .from('transactions')
-        .update(data)
+        // @ts-ignore
+        .update(data as any)
         .eq('id', id)
         .select()
         .single()

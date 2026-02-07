@@ -9,7 +9,7 @@ import { QRCodeSVG } from "qrcode.react"
 
 export default function InvitePage() {
     const router = useRouter()
-    const [groupInfo, setGroupInfo] = useState<{ name: string; invite_code: string } | null>(null)
+    const [groupInfo, setGroupInfo] = useState<{ name: string; invite_code: string | null } | null>(null)
     const [copied, setCopied] = useState(false)
     const [loading, setLoading] = useState(true)
     const [showQR, setShowQR] = useState(false)
@@ -165,7 +165,7 @@ export default function InvitePage() {
                                 2
                             </div>
                             <p className="text-gray-700">
-                                상대방이 회원가입 후 <span className="font-semibold">"초대 코드로 참여하기"</span>를 클릭
+                                상대방이 회원가입 후 <span className="font-semibold">&quot;초대 코드로 참여하기&quot;</span>를 클릭
                             </p>
                         </div>
                         <div className="flex gap-3">

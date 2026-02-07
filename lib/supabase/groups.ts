@@ -21,12 +21,14 @@ export async function createGroup(
     try {
 
         // 1. 그룹 생성 (invite_code는 트리거로 자동 생성)
-        const { data: group, error: groupError } = await supabase
+        const { data, error: groupError } = await supabase
             .from('groups')
+            // @ts-ignore
             .insert({ name: groupName } as any)
             .select('id, invite_code')
             .single()
 
+        const group = data as { id: string; invite_code: string } | null
 
         if (groupError || !group) {
             return {
@@ -48,6 +50,7 @@ export async function createGroup(
 
         const { error: memberError } = await supabase
             .from('members')
+            // @ts-ignore
             .insert(memberData as any)
 
         if (memberError) {
@@ -88,11 +91,13 @@ export async function joinGroupByCode(
 ): Promise<GroupResult> {
     try {
         // 1. 초대 코드로 그룹 조회
-        const { data: group, error: groupError } = await supabase
+        const { data, error: groupError } = await supabase
             .from('groups')
             .select('id, name')
             .eq('invite_code', inviteCode.toUpperCase())
             .single()
+
+        const group = data as { id: string; name: string } | null
 
         if (groupError || !group) {
             return {
@@ -119,6 +124,7 @@ export async function joinGroupByCode(
         // 3. 사용자를 멤버로 등록
         const { error: memberError } = await supabase
             .from('members')
+            // @ts-ignore
             .insert({
                 group_id: group.id,
                 user_id: userId,
@@ -160,11 +166,13 @@ export async function getGroupInviteCode(groupId: string): Promise<string | null
             .eq('id', groupId)
             .single()
 
-        if (error || !data) {
+        const group = data as { invite_code: string } | null
+
+        if (error || !group) {
             return null
         }
 
-        return data.invite_code
+        return group.invite_code
     } catch (error) {
         return null
     }
