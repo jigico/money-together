@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { NumberKeypad } from "@/components/entry/number-keypad"
 import { MemberSelector } from "@/components/entry/member-selector"
 import { getCategories, getMembers } from "@/lib/supabase/queries"
+import { getCurrentUserMemberId } from "@/lib/supabase/helpers"
 import { addTransaction } from "@/lib/supabase/mutations"
 import type { Category, Member } from "@/types/database"
 import { Utensils, Car, Coffee, ShoppingBasket, Home, Hospital, Heart, Gamepad2, Plane } from "lucide-react"
@@ -63,8 +64,12 @@ export default function AddPage() {
                 setCategories(categoriesData)
                 setMembers(membersData)
 
-                // 첫 번째 멤버를 기본 선택
-                if (membersData.length > 0) {
+                // 로그인한 사용자를 기본 선택
+                const currentUserMemberId = await getCurrentUserMemberId()
+                if (currentUserMemberId) {
+                    setSelectedMemberId(currentUserMemberId)
+                } else if (membersData.length > 0) {
+                    // fallback: 첫 번째 멤버 선택
                     setSelectedMemberId(membersData[0].id)
                 }
             } catch (error) {

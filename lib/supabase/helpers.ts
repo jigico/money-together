@@ -44,3 +44,33 @@ export async function getCurrentGroupId(): Promise<string | null> {
 export function clearGroupCache() {
     cachedGroupId = null
 }
+
+// 현재 로그인한 사용자의 멤버 ID 가져오기
+export async function getCurrentUserMemberId(): Promise<string | null> {
+    try {
+        // 현재 로그인한 사용자 조회
+        const { data: { user } } = await supabase.auth.getUser()
+
+        if (!user) {
+            console.error('No authenticated user found')
+            return null
+        }
+
+        // 사용자의 멤버 정보 조회
+        const { data, error } = await supabase
+            .from('members')
+            .select('id')
+            .eq('user_id', user.id)
+            .single() as { data: { id: string } | null, error: any }
+
+        if (error || !data) {
+            console.error('Error fetching user member:', error)
+            return null
+        }
+
+        return data.id
+    } catch (error) {
+        console.error('Error in getCurrentUserMemberId:', error)
+        return null
+    }
+}

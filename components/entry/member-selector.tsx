@@ -16,19 +16,16 @@ export function MemberSelector({ members, selectedMemberId, onSelect, className 
 
     return (
         <div className={className}>
-            <div className="flex gap-3 justify-center">
+            <div className="bg-white rounded-2xl p-1.5 shadow-sm flex">
                 {members.map((member) => (
                     <button
                         key={member.id}
                         type="button"
                         onClick={() => onSelect(member.id)}
-                        className={`
-                            flex-1 py-3 px-4 rounded-xl font-semibold transition-all duration-200 active:scale-[0.98]
-                            ${selectedMemberId === member.id
-                                ? 'bg-blue-600 text-white shadow-lg scale-105'
-                                : 'bg-gray-100/80 text-gray-600 hover:bg-gray-200'
-                            }
-                        `}
+                        className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all duration-200 active:scale-[0.98] ${selectedMemberId === member.id
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                            }`}
                     >
                         {member.name}
                     </button>
