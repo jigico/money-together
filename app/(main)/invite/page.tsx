@@ -3,14 +3,16 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { getCurrentGroupInfo } from "@/lib/supabase/group-info"
-import { Copy, Check, Share2, ArrowLeft } from "lucide-react"
+import { Copy, Check, Share2, ArrowLeft, QrCode } from "lucide-react"
 import Link from "next/link"
+import { QRCodeSVG } from "qrcode.react"
 
 export default function InvitePage() {
     const router = useRouter()
     const [groupInfo, setGroupInfo] = useState<{ name: string; invite_code: string } | null>(null)
     const [copied, setCopied] = useState(false)
     const [loading, setLoading] = useState(true)
+    const [showQR, setShowQR] = useState(false)
 
     useEffect(() => {
         async function fetchGroupInfo() {
@@ -65,14 +67,16 @@ export default function InvitePage() {
         return null
     }
 
+    const inviteUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/onboarding?code=${groupInfo.invite_code}`
+
     return (
         <div className="min-h-screen bg-[#F5F5F7] pb-24">
-            <div className="bg-white px-5 pt-14 pb-6 shadow-sm">
-                <div className="flex items-center gap-3 mb-6">
+            <div className="bg-white px-5 py-6 shadow-sm">
+                <div className="flex items-center gap-3">
                     <Link href="/" className="p-2 -ml-2 hover:bg-gray-100 rounded-full">
                         <ArrowLeft className="w-6 h-6 text-gray-700" />
                     </Link>
-                    <h1 className="text-2xl font-semibold text-gray-900">그룹 초대</h1>
+                    <h1 className="text-xl font-semibold text-gray-900">그룹 초대</h1>
                 </div>
             </div>
 
@@ -90,10 +94,10 @@ export default function InvitePage() {
                         </div>
                     </div>
 
-                    <div className="flex gap-3 mt-4">
+                    <div className="grid grid-cols-2 gap-3 mt-4">
                         <button
                             onClick={copyInviteCode}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+                            className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
                         >
                             {copied ? (
                                 <>
@@ -108,13 +112,41 @@ export default function InvitePage() {
                             )}
                         </button>
                         <button
-                            onClick={shareInviteCode}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 text-gray-900 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                            onClick={() => setShowQR(!showQR)}
+                            className="flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
                         >
-                            <Share2 className="w-5 h-5" />
-                            초대 메시지 공유
+                            <QrCode className="w-5 h-5" />
+                            QR 코드
                         </button>
                     </div>
+
+                    <button
+                        onClick={shareInviteCode}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 mt-3 bg-gray-100 text-gray-900 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                    >
+                        <Share2 className="w-5 h-5" />
+                        초대 메시지 공유
+                    </button>
+
+                    {/* QR Code Modal */}
+                    {showQR && (
+                        <div className="mt-6 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl">
+                            <p className="text-sm font-semibold text-gray-700 mb-4 text-center">
+                                QR 코드를 스캔하여 참여하세요
+                            </p>
+                            <div className="bg-white p-6 rounded-xl flex items-center justify-center">
+                                <QRCodeSVG
+                                    value={inviteUrl}
+                                    size={200}
+                                    level="H"
+                                    includeMargin={true}
+                                />
+                            </div>
+                            <p className="text-xs text-gray-500 mt-3 text-center">
+                                QR 코드를 스캔하면 자동으로 초대 코드가 입력됩니다
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 shadow-sm">
@@ -125,7 +157,7 @@ export default function InvitePage() {
                                 1
                             </div>
                             <p className="text-gray-700">
-                                초대할 사람에게 <span className="font-semibold text-blue-600">초대 코드</span>를 공유하세요
+                                초대할 사람에게 <span className="font-semibold text-blue-600">초대 코드</span> 또는 <span className="font-semibold text-indigo-600">QR 코드</span>를 공유하세요
                             </p>
                         </div>
                         <div className="flex gap-3">
@@ -141,7 +173,7 @@ export default function InvitePage() {
                                 3
                             </div>
                             <p className="text-gray-700">
-                                초대 코드를 입력하면 <span className="font-semibold text-green-600">그룹에 참여 완료!</span>
+                                초대 코드를 입력하거나 QR 스캔하면 <span className="font-semibold text-green-600">그룹에 참여 완료!</span>
                             </p>
                         </div>
                     </div>
