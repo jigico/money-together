@@ -5,7 +5,6 @@ import { ChevronLeft, X, ChevronDown, MoreHorizontal, Calendar } from "lucide-re
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { NumberKeypad } from "@/components/entry/number-keypad"
-import { SpenderToggle } from "@/components/entry/spender-toggle"
 import { getCategories, getMembers } from "@/lib/supabase/queries"
 import { addTransaction } from "@/lib/supabase/mutations"
 import type { Category, Member } from "@/types/database"
@@ -42,7 +41,7 @@ const colorMap: Record<string, string> = {
 export default function AddPage() {
     const router = useRouter()
     const [amount, setAmount] = useState("")
-    const [spender, setSpender] = useState<"husband" | "wife">("husband")
+    const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
     const [description, setDescription] = useState("")
     const [selectedDate, setSelectedDate] = useState(new Date())
@@ -62,6 +61,11 @@ export default function AddPage() {
                 ])
                 setCategories(categoriesData)
                 setMembers(membersData)
+
+                // 첫 번째 멤버를 기본 선택
+                if (membersData.length > 0) {
+                    setSelectedMemberId(membersData[0].id)
+                }
             } catch (error) {
                 console.error('Error fetching data:', error)
             } finally {
@@ -102,22 +106,14 @@ export default function AddPage() {
     }
 
     const handleSave = async () => {
-        if (!amount || !selectedCategory) return
+        if (!amount || !selectedCategory || !selectedMemberId) return
 
         setSaving(true)
         try {
-            const selectedMember = members.find((m) =>
-                spender === "husband" ? m.name === "남편" : m.name === "아내"
-            )
-
-            if (!selectedMember) {
-                throw new Error('멤버를 찾을 수 없습니다')
-            }
-
             await addTransaction({
                 amount: Number(amount),
                 category_id: selectedCategory,
-                member_id: selectedMember.id,
+                member_id: selectedMemberId,
                 description: description,
                 date: formatDateForDB(selectedDate),
             })
@@ -190,12 +186,26 @@ export default function AddPage() {
                 </div>
             </div>
 
-            {/* Spender Toggle */}
-            <SpenderToggle
-                spender={spender}
-                onSpenderChange={setSpender}
-                className="px-6 pb-4 flex-shrink-0"
-            />
+            {/* Member Selection */}
+            <div className="px-6 pb-4 flex-shrink-0">
+                <div className="flex gap-3 justify-center">
+                    {members.map((member) => (
+                        <button
+                            key={member.id}
+                            onClick={() => setSelectedMemberId(member.id)}
+                            className={`
+                                flex-1 py-3 px-4 rounded-xl font-semibold transition-all
+                                ${selectedMemberId === member.id
+                                    ? 'bg-blue-600 text-white shadow-lg scale-105'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }
+                            `}
+                        >
+                            {member.name}
+                        </button>
+                    ))}
+                </div>
+            </div>
 
             {/* Category & Date & Description */}
             <div className="px-6 pb-4 flex-shrink-0 space-y-3">
