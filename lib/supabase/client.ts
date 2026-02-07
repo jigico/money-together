@@ -1,11 +1,8 @@
-import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 import type { Database } from '@/types/database'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-// Create client with proper typing
-// Using type assertion as workaround for manual Database type definitions
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-    db: { schema: 'public' }
-})
+// Browser-side Supabase client with SSR support
+export const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
