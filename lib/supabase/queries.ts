@@ -20,6 +20,7 @@ export async function getTransactions(startDate?: string, endDate?: string) {
     `)
         .eq('group_id', groupId)
         .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
 
     if (startDate) {
         query = query.gte('date', startDate)

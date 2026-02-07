@@ -119,6 +119,18 @@ export default function HistoryPage() {
     const [transactions, setTransactions] = useState<TransactionUI[]>([])
     const [loading, setLoading] = useState(true)
 
+    // Scroll to selected date when timeline opens
+    useEffect(() => {
+        if (isTimelineOpen) {
+            setTimeout(() => {
+                const selectedElement = document.getElementById('selected-date')
+                if (selectedElement) {
+                    selectedElement.scrollIntoView({ block: 'center', behavior: 'smooth' })
+                }
+            }, 100)
+        }
+    }, [isTimelineOpen])
+
     useEffect(() => {
         async function fetchData() {
             setLoading(true)
@@ -343,6 +355,7 @@ export default function HistoryPage() {
                                             return (
                                                 <motion.button
                                                     key={`${item.year}-${item.month}`}
+                                                    id={isSelected ? 'selected-date' : undefined}
                                                     initial={{ opacity: 0, x: -10 }}
                                                     animate={{ opacity: 1, x: 0 }}
                                                     transition={{ delay: index * 0.005 }}
@@ -395,12 +408,12 @@ export default function HistoryPage() {
                         </div>
                         <span className="text-[11px] font-medium text-[#0047AB]">내역</span>
                     </Link>
-                    <button className="flex flex-col items-center gap-1 group">
+                    <Link href="/profile" className="flex flex-col items-center gap-1 group">
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center group-active:scale-95 transition-transform">
                             <User className="w-5 h-5 text-gray-400" />
                         </div>
                         <span className="text-[11px] font-medium text-gray-400">마이</span>
-                    </button>
+                    </Link>
                 </div>
             </div>
         </div>
