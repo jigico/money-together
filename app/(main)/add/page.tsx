@@ -141,7 +141,7 @@ export default function AddPage() {
                 date: formatDateForDB(selectedDate),
             })
 
-            router.push('/')
+            router.push('/history')
         } catch (error) {
             console.error('Error saving transaction:', error)
             alert('거래 저장에 실패했습니다. 다시 시도해주세요.')
