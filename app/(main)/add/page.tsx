@@ -6,6 +6,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { NumberKeypad } from "@/components/entry/number-keypad"
 import { MemberSelector } from "@/components/entry/member-selector"
+import { CalendarDatePicker } from "@/components/entry/calendar-date-picker"
 import { getCategories, getMembers } from "@/lib/supabase/queries"
 import { getCurrentUserMemberId } from "@/lib/supabase/helpers"
 import { addTransaction } from "@/lib/supabase/mutations"
@@ -154,11 +155,6 @@ export default function AddPage() {
         setIsCategoryOpen(false)
     }
 
-    // 날짜 관련 함수들
-    const getDaysInMonth = (year: number, month: number) => {
-        return new Date(year, month + 1, 0).getDate()
-    }
-
     const isValid = amount.length > 0 && selectedCategory !== null && description.trim().length > 0 && !saving
 
     if (loading) {
@@ -168,11 +164,6 @@ export default function AddPage() {
             </div>
         )
     }
-
-    const currentYear = selectedDate.getFullYear()
-    const currentMonth = selectedDate.getMonth()
-    const currentDay = selectedDate.getDate()
-    const daysInMonth = getDaysInMonth(currentYear, currentMonth)
 
     return (
         <div className="min-h-screen bg-[#F5F5F7] flex flex-col max-w-md mx-auto">
@@ -283,78 +274,16 @@ export default function AddPage() {
                 className="mt-auto"
             />
 
-            {/* Date Picker Modal - Apple Style */}
+            {/* Date Picker Modal - Calendar Style */}
             {isDatePickerOpen && (
-                <div className="fixed inset-0 z-50">
-                    <div
-                        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-                        onClick={() => setIsDatePickerOpen(false)}
-                    />
-
-                    <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[2rem] p-6 pb-10 max-w-md mx-auto">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-semibold text-gray-900">날짜 선택</h2>
-                            <button
-                                onClick={() => setIsDatePickerOpen(false)}
-                                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center active:scale-95 transition-transform"
-                            >
-                                <X className="w-4 h-4 text-gray-500" />
-                            </button>
-                        </div>
-
-                        {/* Apple Style Wheel Picker */}
-                        <div className="flex gap-2 justify-center">
-                            {/* Year */}
-                            <div className="flex-1 bg-gray-50 rounded-2xl p-3">
-                                <div className="text-xs text-gray-500 text-center mb-2">년</div>
-                                <select
-                                    value={currentYear}
-                                    onChange={(e) => setSelectedDate(new Date(Number(e.target.value), currentMonth, currentDay))}
-                                    className="w-full text-center text-lg font-semibold bg-transparent outline-none text-gray-900"
-                                >
-                                    {Array.from({ length: 10 }, (_, i) => currentYear - 5 + i).map(year => (
-                                        <option key={year} value={year}>{year}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Month */}
-                            <div className="flex-1 bg-gray-50 rounded-2xl p-3">
-                                <div className="text-xs text-gray-500 text-center mb-2">월</div>
-                                <select
-                                    value={currentMonth + 1}
-                                    onChange={(e) => setSelectedDate(new Date(currentYear, Number(e.target.value) - 1, Math.min(currentDay, getDaysInMonth(currentYear, Number(e.target.value) - 1))))}
-                                    className="w-full text-center text-lg font-semibold bg-transparent outline-none text-gray-900"
-                                >
-                                    {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                                        <option key={month} value={month}>{month}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Day */}
-                            <div className="flex-1 bg-gray-50 rounded-2xl p-3">
-                                <div className="text-xs text-gray-500 text-center mb-2">일</div>
-                                <select
-                                    value={currentDay}
-                                    onChange={(e) => setSelectedDate(new Date(currentYear, currentMonth, Number(e.target.value)))}
-                                    className="w-full text-center text-lg font-semibold bg-transparent outline-none text-gray-900"
-                                >
-                                    {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => (
-                                        <option key={day} value={day}>{day}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={() => setIsDatePickerOpen(false)}
-                            className="w-full mt-6 py-4 bg-[#0047AB] text-white rounded-2xl font-semibold active:scale-[0.98] transition-transform"
-                        >
-                            완료
-                        </button>
-                    </div>
-                </div>
+                <CalendarDatePicker
+                    selectedDate={selectedDate}
+                    onDateSelect={(date) => {
+                        setSelectedDate(date)
+                        setIsDatePickerOpen(false)
+                    }}
+                    onClose={() => setIsDatePickerOpen(false)}
+                />
             )}
 
             {/* Category Modal */}
