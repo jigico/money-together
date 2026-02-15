@@ -17,13 +17,14 @@ interface MemberComparisonBarProps {
 }
 
 export function MemberComparisonBar({ members, className }: MemberComparisonBarProps) {
+    // 최소 2명의 멤버가 필요
+    if (members.length < 2) return null
+
     const totalSpending = members.reduce((sum, member) => sum + member.amount, 0)
 
-    // 남편과 아내 구분
-    const husband = members.find(m => m.name === "남편")
-    const wife = members.find(m => m.name === "아내")
-
-    if (!husband || !wife) return null
+    // 첫 번째와 두 번째 멤버 (사용자가 설정한 이름 사용)
+    const firstMember = members[0]
+    const secondMember = members[1]
 
     // 지출이 0일 때 처리
     if (totalSpending === 0) {
@@ -35,8 +36,8 @@ export function MemberComparisonBar({ members, className }: MemberComparisonBarP
         )
     }
 
-    const husbandPercentage = (husband.amount / totalSpending) * 100
-    const wifePercentage = (wife.amount / totalSpending) * 100
+    const firstMemberPercentage = (firstMember.amount / totalSpending) * 100
+    const secondMemberPercentage = (secondMember.amount / totalSpending) * 100
 
     return (
         <Card className={`bg-white rounded-3xl p-6 shadow-sm border-0 ${className || ''}`}>
@@ -47,19 +48,19 @@ export function MemberComparisonBar({ members, className }: MemberComparisonBarP
                 <div className="flex items-center gap-2">
                     <div
                         className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold"
-                        style={{ backgroundColor: husband.bgColor }}
+                        style={{ backgroundColor: firstMember.bgColor }}
                     >
-                        {husband.avatar}
+                        {firstMember.avatar}
                     </div>
-                    <span className="text-sm font-medium text-gray-900">{husband.name}</span>
+                    <span className="text-sm font-medium text-gray-900">{firstMember.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-900">{wife.name}</span>
+                    <span className="text-sm font-medium text-gray-900">{secondMember.name}</span>
                     <div
                         className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold"
-                        style={{ backgroundColor: wife.bgColor }}
+                        style={{ backgroundColor: secondMember.bgColor }}
                     >
-                        {wife.avatar}
+                        {secondMember.avatar}
                     </div>
                 </div>
             </div>
@@ -70,8 +71,8 @@ export function MemberComparisonBar({ members, className }: MemberComparisonBarP
                 <div
                     className="absolute left-0 top-0 h-full transition-all duration-700 ease-out"
                     style={{
-                        width: `${husbandPercentage}%`,
-                        backgroundColor: husband.color,
+                        width: `${firstMemberPercentage}%`,
+                        backgroundColor: firstMember.color,
                     }}
                 />
 
@@ -79,8 +80,8 @@ export function MemberComparisonBar({ members, className }: MemberComparisonBarP
                 <div
                     className="absolute right-0 top-0 h-full transition-all duration-700 ease-out"
                     style={{
-                        width: `${wifePercentage}%`,
-                        backgroundColor: wife.color,
+                        width: `${secondMemberPercentage}%`,
+                        backgroundColor: secondMember.color,
                     }}
                 />
 
@@ -88,7 +89,7 @@ export function MemberComparisonBar({ members, className }: MemberComparisonBarP
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="bg-white/95 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-md border border-gray-200/50">
                         <span className="text-sm font-bold text-gray-900">
-                            {husbandPercentage.toFixed(0)}% : {wifePercentage.toFixed(0)}%
+                            {firstMemberPercentage.toFixed(0)}% : {secondMemberPercentage.toFixed(0)}%
                         </span>
                     </div>
                 </div>
@@ -96,8 +97,8 @@ export function MemberComparisonBar({ members, className }: MemberComparisonBarP
 
             {/* Amount Details */}
             <div className="flex items-center justify-between text-xs text-gray-500">
-                <span>₩{husband.amount.toLocaleString()}</span>
-                <span>₩{wife.amount.toLocaleString()}</span>
+                <span>₩{firstMember.amount.toLocaleString()}</span>
+                <span>₩{secondMember.amount.toLocaleString()}</span>
             </div>
         </Card>
     )
