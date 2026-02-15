@@ -36,7 +36,7 @@ export async function getTransactions(startDate?: string, endDate?: string) {
     }
 
     // UI 형식으로 변환
-    return data.map((tx: any) => transactionToUI(tx, tx.category))
+    return data.map((tx: any) => transactionToUI(tx, tx.category, tx.member))
 }
 
 // 단일 거래 내역 가져오기 (ID로 조회)
@@ -68,7 +68,7 @@ export async function getSingleTransaction(id: string) {
 
     return {
         ...transaction,
-        ui: transactionToUI(transaction, transaction.category)
+        ui: transactionToUI(transaction, transaction.category, transaction.member)
     }
 }
 
