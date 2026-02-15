@@ -133,6 +133,7 @@ export interface TransactionUI {
     rawDate: string // 원본 날짜 (YYYY-MM-DD)
     color: string
     description: string
+    memberName: string // 지출자 이름
 }
 
 export interface CategoryDataUI {
@@ -153,7 +154,8 @@ export interface MemberSpendingUI {
 // 변환 함수들
 export function transactionToUI(
     transaction: Transaction,
-    category: Category
+    category: Category,
+    member: Member
 ): TransactionUI {
     return {
         id: transaction.id,
@@ -164,6 +166,7 @@ export function transactionToUI(
         rawDate: transaction.date,
         color: category.color,
         description: transaction.description,
+        memberName: member.name,
     }
 }
 

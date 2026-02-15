@@ -288,7 +288,7 @@ export default function HistoryPage() {
                     groupedTransactions.map(({ date, items, total }) => (
                         <div key={date} className="mb-6">
                             {/* Date Header */}
-                            <div className="sticky top-[72px] z-30 bg-[#F5F5F7]/90 backdrop-blur-sm py-2 -mx-5 px-5">
+                            <div className="sticky top-[72px] bg-[#F5F5F7]/90 backdrop-blur-sm py-2 -mx-5 px-5">
                                 <p className="text-sm font-medium text-gray-500">
                                     {formatDateHeader(date)}
                                 </p>
@@ -314,8 +314,9 @@ export default function HistoryPage() {
 
                                             {/* Description */}
                                             <div className="flex-1 min-w-0">
-                                                <p className="font-medium text-gray-900 text-[15px] truncate">
-                                                    {item.category}
+                                                <p className="font-medium text-gray-900 text-[15px] truncate flex items-center gap-1">
+                                                    <span>{item.category}</span>
+                                                    <span className="text-xs text-gray-400">· {item.memberName}</span>
                                                 </p>
                                                 <p className="text-xs text-gray-400 mt-0.5 truncate">
                                                     {item.description}
