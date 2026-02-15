@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Card } from "@/components/ui/card"
 
 export interface Transaction {
@@ -17,11 +18,18 @@ interface TransactionListProps {
 }
 
 export function TransactionList({ transactions, className }: TransactionListProps) {
+    // 현재 날짜 정보
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth() + 1 // 0-11이므로 +1
+
     return (
         <div className={className}>
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">최근 내역</h2>
-                <button className="text-sm text-[#0047AB] font-medium">전체보기</button>
+                <Link href={`/history?year=${currentYear}&month=${currentMonth}`} className="text-sm text-[#0047AB] font-medium">
+                    전체보기
+                </Link>
             </div>
 
             <Card className="bg-white rounded-3xl shadow-sm border-0 overflow-hidden">
