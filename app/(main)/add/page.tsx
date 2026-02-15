@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronLeft, X, ChevronDown, MoreHorizontal, Calendar } from "lucide-react"
+import { ChevronLeft, X, ChevronDown, Calendar } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { NumberKeypad } from "@/components/entry/number-keypad"
@@ -10,7 +10,7 @@ import { getCategories, getMembers } from "@/lib/supabase/queries"
 import { getCurrentUserMemberId } from "@/lib/supabase/helpers"
 import { addTransaction } from "@/lib/supabase/mutations"
 import type { Category, Member } from "@/types/database"
-import { Utensils, Car, Coffee, ShoppingBasket, Home, Hospital, Heart, Gamepad2, Plane } from "lucide-react"
+import { Utensils, Car, Coffee, ShoppingBasket, Home, Hospital, Heart, Gamepad2, Plane, MoreHorizontal, Shirt, Theater, Hotel, Gift, GraduationCap, Baby } from "lucide-react"
 
 // 카테고리 이름별 아이콘 매핑
 const iconMap: Record<string, any> = {
@@ -23,6 +23,14 @@ const iconMap: Record<string, any> = {
     '건강': Heart,
     '여가': Gamepad2,
     '여행': Plane,
+    '의복/미용': Shirt,
+    '자동차': Car,
+    '문화/여가': Theater,
+    '여행/숙박': Hotel,
+    '경조사': Gift,
+    '교육': GraduationCap,
+    '육아': Baby,
+    '선물': Gift,
     '기타': MoreHorizontal,
 }
 
@@ -37,6 +45,14 @@ const colorMap: Record<string, string> = {
     '건강': 'bg-red-100 text-red-600',
     '여가': 'bg-indigo-100 text-indigo-600',
     '여행': 'bg-cyan-100 text-cyan-600',
+    '의복/미용': 'bg-pink-100 text-pink-600',
+    '자동차': 'bg-blue-100 text-blue-600',
+    '문화/여가': 'bg-purple-100 text-purple-600',
+    '여행/숙박': 'bg-cyan-100 text-cyan-600',
+    '경조사': 'bg-amber-100 text-amber-600',
+    '교육': 'bg-green-100 text-green-600',
+    '육아': 'bg-yellow-100 text-yellow-600',
+    '선물': 'bg-pink-100 text-pink-600',
     '기타': 'bg-gray-100 text-gray-600',
 }
 
