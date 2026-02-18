@@ -35,9 +35,10 @@ export function TransactionList({ transactions, className }: TransactionListProp
             <Card className="bg-white rounded-3xl shadow-sm border-0 overflow-hidden">
                 <div className="divide-y divide-gray-100">
                     {transactions.map((transaction, index) => (
-                        <div
+                        <Link
                             key={transaction.id}
-                            className={`px-5 py-4 flex items-center justify-between ${index === 0 ? 'pt-5' : ''
+                            href={`/history/${transaction.id}`}
+                            className={`px-5 py-4 flex items-center justify-between active:bg-gray-50 transition-colors ${index === 0 ? 'pt-5' : ''
                                 } ${index === transactions.length - 1 ? 'pb-5' : ''}`}
                         >
                             <div className="flex items-center gap-4">
@@ -52,7 +53,7 @@ export function TransactionList({ transactions, className }: TransactionListProp
                             <p className="text-base font-bold text-gray-900">
                                 -₩{transaction.amount.toLocaleString()}
                             </p>
-                        </div>
+                        </Link>
                     ))}
                 </div>
             </Card>
