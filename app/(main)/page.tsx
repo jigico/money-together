@@ -7,6 +7,7 @@ import { QuickStatsGrid } from "@/components/dashboard/quick-stats-grid"
 import { TransactionList, type Transaction } from "@/components/dashboard/transaction-list"
 import { FloatingActionButton } from "@/components/dashboard/floating-action-button"
 import { getTransactions, getTotalSpending, getMembers } from "@/lib/supabase/queries"
+import { getBudget } from "@/lib/supabase/budget"
 import type { Member } from "@/types/database"
 
 export default function MoneyTogetherDashboard() {
@@ -15,6 +16,7 @@ export default function MoneyTogetherDashboard() {
     const [totalSpent, setTotalSpent] = useState(0)
     const [todaySpent, setTodaySpent] = useState(0)
     const [monthlyChange, setMonthlyChange] = useState<number | null>(null)
+    const [budget, setBudget] = useState(2_000_000)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -23,6 +25,8 @@ export default function MoneyTogetherDashboard() {
             try {
                 // 현재 월의 시작일과 종료일
                 const now = new Date()
+                const year = now.getFullYear()
+                const month = now.getMonth() + 1
                 const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
                     .toISOString().split('T')[0]
                 const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
@@ -38,18 +42,20 @@ export default function MoneyTogetherDashboard() {
                 const today = now.toISOString().split('T')[0]
 
                 // 데이터 가져오기
-                const [allTransactions, monthlyTotal, lastMonthTotal, dailyTotal, membersData] = await Promise.all([
-                    getTransactions(), // 최근 거래 (제한 없음, 최신순)
-                    getTotalSpending(startOfMonth, endOfMonth), // 이번 달 총 지출
-                    getTotalSpending(startOfLastMonth, endOfLastMonth), // 전월 총 지출
-                    getTotalSpending(today, today), // 오늘 지출
-                    getMembers(), // 멤버 목록
+                const [allTransactions, monthlyTotal, lastMonthTotal, dailyTotal, membersData, budgetAmount] = await Promise.all([
+                    getTransactions(),
+                    getTotalSpending(startOfMonth, endOfMonth),
+                    getTotalSpending(startOfLastMonth, endOfLastMonth),
+                    getTotalSpending(today, today),
+                    getMembers(),
+                    getBudget(year, month),
                 ])
 
-                setTransactions(allTransactions.slice(0, 5)) // 최근 5개만 표시
+                setTransactions(allTransactions.slice(0, 5))
                 setTotalSpent(monthlyTotal)
                 setTodaySpent(dailyTotal)
                 setMembers(membersData)
+                setBudget(budgetAmount)
 
                 // 전월 대비 계산
                 if (lastMonthTotal > 0) {
@@ -87,7 +93,7 @@ export default function MoneyTogetherDashboard() {
                 </div>
 
                 {/* Total Spending Card */}
-                <SpendingSummaryCard totalSpent={totalSpent} budget={2000000} />
+                <SpendingSummaryCard totalSpent={totalSpent} budget={budget} />
             </div>
 
             {/* Quick Stats */}

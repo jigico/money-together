@@ -27,6 +27,8 @@ import { Card } from "@/components/ui/card"
 import { supabase } from "@/lib/supabase/client"
 import { getCurrentGroupInfo } from "@/lib/supabase/group-info"
 import { getMembers } from "@/lib/supabase/queries"
+import { getBudget, upsertBudget } from "@/lib/supabase/budget"
+import { getCurrentUserMemberId } from "@/lib/supabase/helpers"
 import { QRCodeSVG } from "qrcode.react"
 import type { Member } from "@/types/database"
 
@@ -35,6 +37,10 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(true)
     const [copiedCode, setCopiedCode] = useState(false)
     const [showQRModal, setShowQRModal] = useState(false)
+    const [showBudgetModal, setShowBudgetModal] = useState(false)
+    const [budgetInput, setBudgetInput] = useState("")
+    const [currentBudget, setCurrentBudget] = useState(2_000_000)
+    const [savingBudget, setSavingBudget] = useState(false)
 
     // User & Group Data
     const [userEmail, setUserEmail] = useState("")
@@ -67,6 +73,12 @@ export default function ProfilePage() {
                 const membersData = await getMembers()
                 setMembers(membersData)
 
+                // Get budget
+                const now = new Date()
+                const budget = await getBudget(now.getFullYear(), now.getMonth() + 1)
+                setCurrentBudget(budget)
+                setBudgetInput(String(budget))
+
             } catch (error) {
                 console.error('Error loading profile data:', error)
             } finally {
@@ -92,6 +104,28 @@ export default function ProfilePage() {
         } catch (error) {
             console.error('Logout error:', error)
             alert('로그아웃에 실패했습니다.')
+        }
+    }
+
+    const handleSaveBudget = async () => {
+        const amount = Number(budgetInput.replace(/,/g, ''))
+        if (!amount || amount <= 0) return
+        setSavingBudget(true)
+        try {
+            const memberId = await getCurrentUserMemberId()
+            const now = new Date()
+            const result = await upsertBudget(now.getFullYear(), now.getMonth() + 1, amount, memberId || '')
+            if (result.success) {
+                setCurrentBudget(amount)
+                setShowBudgetModal(false)
+            } else {
+                alert('예산 저장에 실패했습니다.')
+            }
+        } catch (e) {
+            console.error(e)
+            alert('예산 저장에 실패했습니다.')
+        } finally {
+            setSavingBudget(false)
         }
     }
 
@@ -208,6 +242,22 @@ export default function ProfilePage() {
                             </div>
                             <ChevronRight className="w-5 h-5 text-gray-400" />
                         </Link>
+                        <div className="border-t border-gray-100" />
+                        <button
+                            onClick={() => { setBudgetInput(String(currentBudget)); setShowBudgetModal(true) }}
+                            className="w-full px-5 py-4 flex items-center justify-between active:bg-gray-50 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center">
+                                    <Wallet className="w-5 h-5 text-green-600" />
+                                </div>
+                                <div className="text-left">
+                                    <span className="text-[15px] font-medium text-gray-900 block">이번 달 예산</span>
+                                    <span className="text-xs text-gray-400">₩{currentBudget.toLocaleString()}</span>
+                                </div>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-gray-400" />
+                        </button>
                     </Card>
                 </div>
 
@@ -280,6 +330,50 @@ export default function ProfilePage() {
                             className="w-full bg-blue-600 text-white rounded-2xl py-3 font-semibold active:scale-[0.98] transition-transform"
                         >
                             닫기
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Budget Edit Modal */}
+            {showBudgetModal && (
+                <div
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-center z-50"
+                    onClick={() => setShowBudgetModal(false)}
+                >
+                    <div
+                        className="bg-white rounded-t-3xl p-6 w-full max-w-lg shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-bold text-gray-900">이번 달 예산 설정</h3>
+                            <button
+                                onClick={() => setShowBudgetModal(false)}
+                                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
+                            >
+                                <X className="w-5 h-5 text-gray-600" />
+                            </button>
+                        </div>
+                        <div className="mb-6">
+                            <label className="text-sm text-gray-500 mb-2 block">예산 금액 (원)</label>
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₩</span>
+                                <input
+                                    type="number"
+                                    value={budgetInput}
+                                    onChange={(e) => setBudgetInput(e.target.value)}
+                                    className="w-full pl-8 pr-4 py-4 text-2xl font-bold text-gray-900 border-2 border-gray-200 rounded-2xl focus:border-blue-500 focus:outline-none"
+                                    placeholder="2000000"
+                                    inputMode="numeric"
+                                />
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleSaveBudget}
+                            disabled={savingBudget}
+                            className="w-full bg-blue-600 text-white rounded-2xl py-4 font-semibold text-lg active:scale-[0.98] transition-transform disabled:opacity-50"
+                        >
+                            {savingBudget ? '저장 중...' : '저장'}
                         </button>
                     </div>
                 </div>
