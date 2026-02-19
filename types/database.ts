@@ -1,4 +1,5 @@
 // Database Types - Structured for Supabase v2
+export type TransactionType = 'expense' | 'income' | 'savings' | 'investment'
 export type Json =
     | string
     | number
@@ -101,6 +102,7 @@ export interface Transaction {
     description: string
     created_at: string
     date: string
+    transaction_type: TransactionType
 }
 
 // Category Type
@@ -134,6 +136,7 @@ export interface TransactionUI {
     color: string
     description: string
     memberName: string // 지출자 이름
+    transactionType: TransactionType
 }
 
 export interface CategoryDataUI {
@@ -167,6 +170,7 @@ export function transactionToUI(
         color: category.color,
         description: transaction.description,
         memberName: member.name,
+        transactionType: transaction.transaction_type ?? 'expense',
     }
 }
 

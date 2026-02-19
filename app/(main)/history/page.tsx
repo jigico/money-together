@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronLeft, ChevronRight, Plus, CreditCard, Home, TrendingUp, User, Calendar, List } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, CreditCard, Home, User, Calendar, List } from "lucide-react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { getTransactions } from "@/lib/supabase/queries"
 import type { TransactionUI } from "@/types/database"
-import { Utensils, Car, Coffee, ShoppingBasket, Home as HomeIcon, Hospital, MoreHorizontal, Heart, Gamepad2, Plane, Shirt, Theater, Hotel, Gift, GraduationCap, Baby } from "lucide-react"
+import { Utensils, Car, Coffee, ShoppingBasket, Home as HomeIcon, Hospital, MoreHorizontal, Heart, Gamepad2, Plane, Shirt, Theater, Hotel, Gift, GraduationCap, Baby, Banknote, Briefcase, Landmark, CircleDollarSign, PiggyBank, Building2, Shield, TrendingUp, BarChart2, Building, Bitcoin } from "lucide-react"
 
 const iconMap: Record<string, any> = {
     '식비': Utensils,
@@ -27,6 +27,20 @@ const iconMap: Record<string, any> = {
     '육아': Baby,
     '선물': Gift,
     '기타': MoreHorizontal,
+    // 수입
+    '급여': Banknote,
+    '부업': Briefcase,
+    '이자': Landmark,
+    '기타수입': CircleDollarSign,
+    // 저축
+    '적금': PiggyBank,
+    '청약': Building2,
+    '비상금': Shield,
+    // 투자
+    '주식': TrendingUp,
+    '펀드': BarChart2,
+    '부동산': Building,
+    '코인': Bitcoin,
 }
 
 const colorMap: Record<string, string> = {
@@ -48,6 +62,20 @@ const colorMap: Record<string, string> = {
     '육아': 'bg-yellow-100 text-yellow-600',
     '선물': 'bg-pink-100 text-pink-600',
     '기타': 'bg-gray-100 text-gray-600',
+    // 수입
+    '급여': 'bg-green-100 text-green-700',
+    '부업': 'bg-emerald-100 text-emerald-600',
+    '이자': 'bg-teal-100 text-teal-600',
+    '기타수입': 'bg-green-100 text-green-600',
+    // 저축
+    '적금': 'bg-blue-100 text-blue-600',
+    '청약': 'bg-sky-100 text-sky-600',
+    '비상금': 'bg-indigo-100 text-indigo-600',
+    // 투자
+    '주식': 'bg-purple-100 text-purple-600',
+    '펀드': 'bg-violet-100 text-violet-600',
+    '부동산': 'bg-purple-100 text-purple-700',
+    '코인': 'bg-amber-100 text-amber-600',
 }
 
 function getDayOfWeek(dateStr: string): string {
