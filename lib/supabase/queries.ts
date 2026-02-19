@@ -105,6 +105,7 @@ export async function getMemberSpending(startDate?: string, endDate?: string): P
                 .select('amount')
                 .eq('group_id', groupId)
                 .eq('member_id', member.id)
+                .eq('transaction_type', 'expense')
 
             if (startDate) {
                 query = query.gte('date', startDate)
@@ -139,6 +140,7 @@ export async function getCategorySpending(startDate?: string, endDate?: string):
       category:categories(*)
     `)
         .eq('group_id', groupId)
+        .eq('transaction_type', 'expense')
 
     if (startDate) {
         query = query.gte('date', startDate)
@@ -195,6 +197,7 @@ export async function getMonthlySpending(monthsBack: number = 5): Promise<{ mont
             .from('transactions')
             .select('amount')
             .eq('group_id', groupId)
+            .eq('transaction_type', 'expense')
             .gte('date', startOfMonth)
             .lte('date', endOfMonth)
 
@@ -240,6 +243,7 @@ export async function getTotalSpending(startDate?: string, endDate?: string): Pr
         .from('transactions')
         .select('amount')
         .eq('group_id', groupId)
+        .eq('transaction_type', 'expense')
 
     if (startDate) {
         query = query.gte('date', startDate)
