@@ -114,21 +114,25 @@ function groupByDate(transactions: TransactionUI[]): GroupedTransaction[] {
         .map(([date, items]) => ({
             date,
             items,
-            total: items.reduce((sum, item) => sum + item.amount, 0)
+            total: items
+                .filter(item => item.transactionType === 'expense')
+                .reduce((sum, item) => sum + item.amount, 0)
         }))
 }
 
-// 날짜별 지출 합계 계산
+// 날짜별 지출 합계 계산 (expense만)
 function getDailySpending(transactions: TransactionUI[]): Record<string, number> {
     const dailySpending: Record<string, number> = {}
 
-    transactions.forEach((tx) => {
-        const dateKey = tx.rawDate
-        if (!dailySpending[dateKey]) {
-            dailySpending[dateKey] = 0
-        }
-        dailySpending[dateKey] += tx.amount
-    })
+    transactions
+        .filter(tx => tx.transactionType === 'expense')
+        .forEach((tx) => {
+            const dateKey = tx.rawDate
+            if (!dailySpending[dateKey]) {
+                dailySpending[dateKey] = 0
+            }
+            dailySpending[dateKey] += tx.amount
+        })
 
     return dailySpending
 }
@@ -239,8 +243,10 @@ export default function HistoryPage() {
     const months = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]
     const timeline = generateTimeline()
 
-    // Calculate total amount from all transactions
-    const totalAmount = transactions.reduce((sum, transaction) => sum + transaction.amount, 0)
+    // Calculate total expense amount from expense transactions only
+    const totalAmount = transactions
+        .filter(t => t.transactionType === 'expense')
+        .reduce((sum, transaction) => sum + transaction.amount, 0)
 
     // Animated Counter Component
     const AnimatedCounter = ({ value }: { value: number }) => {
