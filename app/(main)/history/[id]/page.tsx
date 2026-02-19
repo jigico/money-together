@@ -9,7 +9,8 @@ import { CalendarDatePicker } from "@/components/entry/calendar-date-picker"
 import { getCategories, getMembers, getSingleTransaction } from "@/lib/supabase/queries"
 import { updateTransaction, deleteTransaction } from "@/lib/supabase/mutations"
 import type { Category, Member } from "@/types/database"
-import { Utensils, Car, Coffee, ShoppingBasket, Home, Hospital, Heart, Gamepad2, Plane, MoreHorizontal, Shirt, Theater, Hotel, Gift, GraduationCap, Baby } from "lucide-react"
+import type { TransactionType } from "@/types/database"
+import { Utensils, Car, Coffee, ShoppingBasket, Home, Hospital, Heart, Gamepad2, Plane, MoreHorizontal, Shirt, Theater, Hotel, Gift, GraduationCap, Baby, Banknote, Briefcase, Landmark, CircleDollarSign, PiggyBank, Building2, Shield, TrendingUp, BarChart2, Building, Bitcoin } from "lucide-react"
 
 // 카테고리 이름별 아이콘 매핑
 const iconMap: Record<string, any> = {
@@ -31,6 +32,20 @@ const iconMap: Record<string, any> = {
     '육아': Baby,
     '선물': Gift,
     '기타': MoreHorizontal,
+    // 수입
+    '급여': Banknote,
+    '부업': Briefcase,
+    '이자': Landmark,
+    '기타수입': CircleDollarSign,
+    // 저축
+    '적금': PiggyBank,
+    '청약': Building2,
+    '비상금': Shield,
+    // 투자
+    '주식': TrendingUp,
+    '펀드': BarChart2,
+    '부동산': Building,
+    '코인': Bitcoin,
 }
 
 // 카테고리 이름별 색상 클래스 매핑
@@ -53,6 +68,20 @@ const colorMap: Record<string, string> = {
     '육아': 'bg-yellow-100 text-yellow-600',
     '선물': 'bg-pink-100 text-pink-600',
     '기타': 'bg-gray-100 text-gray-600',
+    // 수입
+    '급여': 'bg-green-100 text-green-700',
+    '부업': 'bg-emerald-100 text-emerald-600',
+    '이자': 'bg-teal-100 text-teal-600',
+    '기타수입': 'bg-green-100 text-green-600',
+    // 저축
+    '적금': 'bg-blue-100 text-blue-600',
+    '청약': 'bg-sky-100 text-sky-600',
+    '비상금': 'bg-indigo-100 text-indigo-600',
+    // 투자
+    '주식': 'bg-purple-100 text-purple-600',
+    '펀드': 'bg-violet-100 text-violet-600',
+    '부동산': 'bg-purple-100 text-purple-700',
+    '코인': 'bg-amber-100 text-amber-600',
 }
 
 export default function TransactionDetailPage() {
@@ -61,6 +90,7 @@ export default function TransactionDetailPage() {
     const transactionId = params.id as string
 
     const [amount, setAmount] = useState("")
+    const [transactionType, setTransactionType] = useState<TransactionType>('expense')
     const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
     const [description, setDescription] = useState("")
@@ -87,11 +117,12 @@ export default function TransactionDetailPage() {
                 setMembers(membersData)
 
                 if (transactionData) {
-                    // 기존 데이터로 폼 미리 채우기
+                    // 기존 데이터로 폼 미리 일기
                     setAmount(String(transactionData.amount))
                     setSelectedCategory(transactionData.category_id)
                     setDescription(transactionData.description)
                     setSelectedDate(new Date(transactionData.date))
+                    setTransactionType((transactionData as any).transaction_type ?? 'expense')
 
                     // 멤버 정보로 selectedMemberId 설정
                     if (membersData && membersData.length > 0) {
@@ -117,7 +148,16 @@ export default function TransactionDetailPage() {
         fetchData()
     }, [transactionId, router])
 
-    const selectedCategoryData = categories.find((c) => c.id === selectedCategory)
+    // 유형별 카테고리 필터
+    const TYPE_CATEGORY_NAMES: Record<TransactionType, string[]> = {
+        expense: ['식비', '교통', '카페', '생활', '주거', '병원', '건강', '여가', '여행', '의복/미용', '자동차', '문화/여가', '여행/숙박', '경조사', '교육', '육아', '선물', '기타'],
+        income: ['급여', '부업', '이자', '기타수입'],
+        savings: ['적금', '청약', '비상금'],
+        investment: ['주식', '펀드', '부동산', '코인'],
+    }
+    const filteredCategories = categories.filter(c => TYPE_CATEGORY_NAMES[transactionType].includes(c.name))
+
+    const selectedCategoryData = filteredCategories.find((c) => c.id === selectedCategory)
 
     const formatAmount = (value: string) => {
         if (!value) return "0"
@@ -161,6 +201,7 @@ export default function TransactionDetailPage() {
                 member_id: selectedMemberId,
                 description: description,
                 date: formatDateForDB(selectedDate),
+                transaction_type: transactionType,
             })
 
             router.push('/history')
@@ -222,6 +263,27 @@ export default function TransactionDetailPage() {
                     <X className="w-5 h-5 text-gray-500" />
                 </button>
             </header>
+
+            {/* Transaction Type Tabs */}
+            <div className="px-6 pb-3 flex-shrink-0">
+                <div className="grid grid-cols-4 gap-1 bg-white rounded-2xl p-1 shadow-sm">
+                    {([
+                        { type: 'expense' as TransactionType, label: '지출', color: 'text-red-600', bg: 'bg-red-50' },
+                        { type: 'income' as TransactionType, label: '수입', color: 'text-green-600', bg: 'bg-green-50' },
+                        { type: 'savings' as TransactionType, label: '저축', color: 'text-blue-600', bg: 'bg-blue-50' },
+                        { type: 'investment' as TransactionType, label: '투자', color: 'text-purple-600', bg: 'bg-purple-50' },
+                    ]).map(({ type, label, color, bg }) => (
+                        <button
+                            key={type}
+                            onClick={() => { setTransactionType(type); setSelectedCategory(null) }}
+                            className={`py-2 rounded-xl text-sm font-semibold transition-all ${transactionType === type ? `${bg} ${color}` : 'text-gray-400'
+                                }`}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+            </div>
 
             {/* Amount Display */}
             <div className="px-6 py-4 flex-shrink-0">

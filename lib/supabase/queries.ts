@@ -1,5 +1,5 @@
 import { supabase } from './client'
-import type { Transaction, Category, Member, TransactionUI, CategoryDataUI, MemberSpendingUI } from '@/types/database'
+import type { Transaction, Category, Member, TransactionUI, CategoryDataUI, MemberSpendingUI, TransactionType } from '@/types/database'
 import { transactionToUI, memberToUI } from '@/types/database'
 import { getCurrentGroupId } from './helpers'
 
@@ -256,6 +256,30 @@ export async function getTotalSpending(startDate?: string, endDate?: string): Pr
     }
 
     return data.reduce((sum, tx) => sum + tx.amount, 0)
+}
+
+// 유형별 합계 가져오기 (income/expense/savings/investment)
+export async function getTotalByType(
+    type: TransactionType,
+    startDate?: string,
+    endDate?: string
+): Promise<number> {
+    const groupId = await getCurrentGroupId()
+    if (!groupId) return 0
+
+    let query = (supabase as any)
+        .from('transactions')
+        .select('amount')
+        .eq('group_id', groupId)
+        .eq('transaction_type', type)
+
+    if (startDate) query = query.gte('date', startDate)
+    if (endDate) query = query.lte('date', endDate)
+
+    const { data, error } = await query
+
+    if (error || !data) return 0
+    return (data as { amount: number }[]).reduce((sum, tx) => sum + tx.amount, 0)
 }
 
 // 카테고리 목록 가져오기 (공통)

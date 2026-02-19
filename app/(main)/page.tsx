@@ -6,8 +6,9 @@ import { SpendingSummaryCard } from "@/components/dashboard/spending-summary-car
 import { QuickStatsGrid } from "@/components/dashboard/quick-stats-grid"
 import { TransactionList, type Transaction } from "@/components/dashboard/transaction-list"
 import { FloatingActionButton } from "@/components/dashboard/floating-action-button"
-import { getTransactions, getTotalSpending, getMembers } from "@/lib/supabase/queries"
+import { getTransactions, getTotalSpending, getMembers, getTotalByType } from "@/lib/supabase/queries"
 import { getBudget } from "@/lib/supabase/budget"
+import { IncomeRatioCard } from "@/components/dashboard/income-ratio-card"
 import type { Member } from "@/types/database"
 
 export default function MoneyTogetherDashboard() {
@@ -17,6 +18,9 @@ export default function MoneyTogetherDashboard() {
     const [todaySpent, setTodaySpent] = useState(0)
     const [monthlyChange, setMonthlyChange] = useState<number | null>(null)
     const [budget, setBudget] = useState(2_000_000)
+    const [income, setIncome] = useState(0)
+    const [savingsTotal, setSavingsTotal] = useState(0)
+    const [investmentTotal, setInvestmentTotal] = useState(0)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -42,13 +46,16 @@ export default function MoneyTogetherDashboard() {
                 const today = now.toISOString().split('T')[0]
 
                 // 데이터 가져오기
-                const [allTransactions, monthlyTotal, lastMonthTotal, dailyTotal, membersData, budgetAmount] = await Promise.all([
+                const [allTransactions, monthlyTotal, lastMonthTotal, dailyTotal, membersData, budgetAmount, incomeTotal, savTotal, invTotal] = await Promise.all([
                     getTransactions(),
                     getTotalSpending(startOfMonth, endOfMonth),
                     getTotalSpending(startOfLastMonth, endOfLastMonth),
                     getTotalSpending(today, today),
                     getMembers(),
                     getBudget(year, month),
+                    getTotalByType('income', startOfMonth, endOfMonth),
+                    getTotalByType('savings', startOfMonth, endOfMonth),
+                    getTotalByType('investment', startOfMonth, endOfMonth),
                 ])
 
                 setTransactions(allTransactions.slice(0, 5))
@@ -56,6 +63,9 @@ export default function MoneyTogetherDashboard() {
                 setTodaySpent(dailyTotal)
                 setMembers(membersData)
                 setBudget(budgetAmount)
+                setIncome(incomeTotal)
+                setSavingsTotal(savTotal)
+                setInvestmentTotal(invTotal)
 
                 // 전월 대비 계산
                 if (lastMonthTotal > 0) {
@@ -95,6 +105,14 @@ export default function MoneyTogetherDashboard() {
                 {/* Total Spending Card */}
                 <SpendingSummaryCard totalSpent={totalSpent} budget={budget} />
             </div>
+
+            {/* Income Ratio Card */}
+            <IncomeRatioCard
+                income={income}
+                expense={totalSpent}
+                savings={savingsTotal}
+                investment={investmentTotal}
+            />
 
             {/* Quick Stats */}
             <QuickStatsGrid monthlyChange={monthlyChange} todaySpent={todaySpent} className="px-5 mb-8" />

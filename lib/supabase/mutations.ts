@@ -1,5 +1,6 @@
 import { supabase } from './client'
 import { getCurrentGroupId } from './helpers'
+import type { TransactionType } from '@/types/database'
 
 // 거래 추가 (그룹 ID 자동 포함)
 export async function addTransaction(data: {
@@ -8,6 +9,7 @@ export async function addTransaction(data: {
     member_id: string
     description: string
     date?: string
+    transaction_type?: TransactionType
 }) {
     const groupId = await getCurrentGroupId()
     if (!groupId) {
@@ -24,6 +26,7 @@ export async function addTransaction(data: {
             member_id: data.member_id,
             description: data.description,
             date: data.date || new Date().toISOString().split('T')[0],
+            transaction_type: data.transaction_type || 'expense',
         }] as any)
         .select()
         .single()
@@ -43,6 +46,7 @@ export async function updateTransaction(id: string, data: Partial<{
     member_id: string
     description: string
     date: string
+    transaction_type: TransactionType
 }>) {
     const { data: transaction, error } = await supabase
         .from('transactions')
