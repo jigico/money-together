@@ -96,6 +96,7 @@ interface GroupedTransaction {
     date: string
     items: TransactionUI[]
     total: number
+    totalIncome: number
 }
 
 function groupByDate(transactions: TransactionUI[]): GroupedTransaction[] {
@@ -116,7 +117,10 @@ function groupByDate(transactions: TransactionUI[]): GroupedTransaction[] {
             items,
             total: items
                 .filter(item => item.transactionType === 'expense')
-                .reduce((sum, item) => sum + item.amount, 0)
+                .reduce((sum, item) => sum + item.amount, 0),
+            totalIncome: items
+                .filter(item => item.transactionType === 'income')
+                .reduce((sum, item) => sum + item.amount, 0),
         }))
 }
 
@@ -352,13 +356,25 @@ export default function HistoryPage() {
                             <p className="text-gray-400 text-sm">이번 달 거래 내역이 없습니다</p>
                         </div>
                     ) : (
-                        groupedTransactions.map(({ date, items, total }) => (
+                        groupedTransactions.map(({ date, items, total, totalIncome }) => (
                             <div key={date} className="mb-6">
                                 {/* Date Header */}
-                                <div className="sticky top-[72px] bg-[#F5F5F7]/90 backdrop-blur-sm py-2 -mx-5 px-5">
+                                <div className="sticky top-[72px] bg-[#F5F5F7]/90 backdrop-blur-sm py-2 -mx-5 px-5 flex items-center justify-between">
                                     <p className="text-sm font-medium text-gray-500">
                                         {formatDateHeader(date)}
                                     </p>
+                                    <div className="flex items-center gap-2">
+                                        {totalIncome > 0 && (
+                                            <span className="text-xs font-semibold text-emerald-500">
+                                                +{totalIncome.toLocaleString()}
+                                            </span>
+                                        )}
+                                        {total > 0 && (
+                                            <span className="text-xs font-semibold text-red-500">
+                                                -{total.toLocaleString()}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Items */}
