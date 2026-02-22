@@ -286,6 +286,106 @@ export async function getTotalByType(
     return (data as { amount: number }[]).reduce((sum, tx) => sum + tx.amount, 0)
 }
 
+// 멤버별 재무 종합 요약 (수입/지출/저축/투자 + 상위 지출 카테고리)
+export interface MemberFinancialSummary {
+    memberId: string
+    memberName: string
+    memberAvatar: string
+    memberColor: string
+    memberBgColor: string
+    income: number
+    expense: number
+    savings: number
+    investment: number
+    topCategories: { name: string; amount: number; color: string }[]
+}
+
+export async function getMemberFinancialSummary(
+    startDate?: string,
+    endDate?: string
+): Promise<MemberFinancialSummary[]> {
+    const groupId = await getCurrentGroupId()
+    if (!groupId) return []
+
+    const { data: members, error: membersError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('group_id', groupId)
+
+    if (membersError || !members) return []
+
+    const summaries = await Promise.all(
+        (members as Member[]).map(async (member) => {
+            const types: TransactionType[] = ['income', 'expense', 'savings', 'investment']
+            const totals = await Promise.all(
+                types.map(async (type) => {
+                    let query = (supabase as any)
+                        .from('transactions')
+                        .select('amount')
+                        .eq('group_id', groupId)
+                        .eq('member_id', member.id)
+                        .eq('transaction_type', type)
+
+                    if (startDate) query = query.gte('date', startDate)
+                    if (endDate) query = query.lte('date', endDate)
+
+                    const { data } = await query
+                    return (data as { amount: number }[] | null)?.reduce((s, tx) => s + tx.amount, 0) || 0
+                })
+            )
+
+            // 지출 카테고리별 집계
+            let catQuery = (supabase as any)
+                .from('transactions')
+                .select('amount, category:categories(name, color)')
+                .eq('group_id', groupId)
+                .eq('member_id', member.id)
+                .eq('transaction_type', 'expense')
+
+            if (startDate) catQuery = catQuery.gte('date', startDate)
+            if (endDate) catQuery = catQuery.lte('date', endDate)
+
+            const { data: catData } = await catQuery
+
+            const catMap = new Map<string, { amount: number; color: string }>()
+                ; (catData as { amount: number; category: { name: string; color: string } }[] | null)?.forEach((tx) => {
+                    const name = tx.category?.name
+                    const color = tx.category?.color || '#9CA3AF'
+                    if (!name) return
+                    const existing = catMap.get(name)
+                    if (existing) existing.amount += tx.amount
+                    else catMap.set(name, { amount: tx.amount, color })
+                })
+
+            const sorted = Array.from(catMap.entries())
+                .map(([name, v]) => ({ name, ...v }))
+                .sort((a, b) => b.amount - a.amount)
+
+            const top3 = sorted.slice(0, 3)
+            const rest = sorted.slice(3)
+            if (rest.length > 0) {
+                const otherAmount = rest.reduce((s, c) => s + c.amount, 0)
+                top3.push({ name: '기타', amount: otherAmount, color: '#9CA3AF' })
+            }
+
+            return {
+                memberId: member.id,
+                memberName: member.name,
+                memberAvatar: member.avatar,
+                memberColor: member.color,
+                memberBgColor: member.bg_color,
+                income: totals[0],
+                expense: totals[1],
+                savings: totals[2],
+                investment: totals[3],
+                topCategories: top3,
+            }
+        })
+    )
+
+    return summaries
+}
+
 // 카테고리 목록 가져오기 (공통)
 export async function getCategories() {
     const { data, error } = await supabase

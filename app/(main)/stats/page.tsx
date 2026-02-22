@@ -7,7 +7,9 @@ import { CategoryDonutChart, type CategoryData } from "@/components/stats/catego
 import { MemberComparisonBar, type MemberSpending } from "@/components/stats/member-comparison-bar"
 import { MonthlyTrendChart, type MonthlyData } from "@/components/stats/monthly-trend-chart"
 import { TopCategoriesList, type TopCategory } from "@/components/stats/top-categories-list"
-import { getCategorySpending, getMemberSpending, getMonthlySpending, getTopCategories, getTotalSpending } from "@/lib/supabase/queries"
+import { getCategorySpending, getMemberSpending, getMonthlySpending, getTopCategories, getTotalSpending, getMemberFinancialSummary } from "@/lib/supabase/queries"
+import type { MemberFinancialSummary } from "@/lib/supabase/queries"
+import { MemberFinancialProfile } from "@/components/stats/member-financial-profile"
 
 export default function StatsPage() {
     const [currentMonth, setCurrentMonth] = useState({ year: 2026, month: 2 }) // 현재 월: 2026년 2월
@@ -17,6 +19,7 @@ export default function StatsPage() {
     const [topCategories, setTopCategories] = useState<TopCategory[]>([])
     const [totalSpending, setTotalSpending] = useState(0)
     const [previousMonthSpending, setPreviousMonthSpending] = useState(0)
+    const [memberFinancials, setMemberFinancials] = useState<MemberFinancialSummary[]>([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -38,13 +41,14 @@ export default function StatsPage() {
                     .toISOString().split('T')[0]
 
                 // 데이터 가져오기
-                const [categories, members, monthly, top, total, prevTotal] = await Promise.all([
+                const [categories, members, monthly, top, total, prevTotal, memberFinancialsData] = await Promise.all([
                     getCategorySpending(startOfMonth, endOfMonth),
                     getMemberSpending(startOfMonth, endOfMonth),
                     getMonthlySpending(5),
                     getTopCategories(3, startOfMonth, endOfMonth),
                     getTotalSpending(startOfMonth, endOfMonth),
                     getTotalSpending(startOfPrevMonth, endOfPrevMonth),
+                    getMemberFinancialSummary(startOfMonth, endOfMonth),
                 ])
 
                 setCategoryData(categories)
@@ -53,6 +57,7 @@ export default function StatsPage() {
                 setTopCategories(top)
                 setTotalSpending(total)
                 setPreviousMonthSpending(prevTotal)
+                setMemberFinancials(memberFinancialsData)
             } catch (error) {
                 console.error('Error fetching stats data:', error)
             } finally {
@@ -202,6 +207,13 @@ export default function StatsPage() {
             {memberSpending.length > 0 && (
                 <div className="px-5 mb-6">
                     <MemberComparisonBar members={memberSpending} />
+                </div>
+            )}
+
+            {/* Member Financial Profile */}
+            {memberFinancials.length > 0 && (
+                <div className="px-5 mb-6">
+                    <MemberFinancialProfile members={memberFinancials} />
                 </div>
             )}
 

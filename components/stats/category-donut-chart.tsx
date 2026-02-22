@@ -61,7 +61,7 @@ export function CategoryDonutChart({ data, className }: CategoryDonutChartProps)
                 </div>
 
                 {/* Legend */}
-                <div className="grid grid-cols-3 gap-x-6 gap-y-3 mt-4 w-full">
+                <div className="grid grid-cols-3 gap-x-2 gap-y-3 mt-4 w-full">
                     {data.map((item) => {
                         const percentage = ((item.value / total) * 100).toFixed(1)
                         return (
