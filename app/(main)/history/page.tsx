@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronLeft, ChevronRight, Plus, CreditCard, Home, User, Calendar, List } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, CreditCard, Home, User, Calendar, List, SlidersHorizontal, X } from "lucide-react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
-import { getTransactions } from "@/lib/supabase/queries"
-import type { TransactionUI } from "@/types/database"
+import { getTransactions, getCategories, getMembers } from "@/lib/supabase/queries"
+import type { TransactionUI, Category, Member, TransactionType } from "@/types/database"
 import { Utensils, Car, Coffee, ShoppingBasket, Home as HomeIcon, Hospital, MoreHorizontal, Heart, Gamepad2, Plane, Shirt, Theater, Hotel, Gift, GraduationCap, Baby, Banknote, Briefcase, Landmark, CircleDollarSign, PiggyBank, Building2, Shield, TrendingUp, BarChart2, Building, Bitcoin } from "lucide-react"
+import { FilterModal } from "@/components/history/filter-modal"
 
 const iconMap: Record<string, any> = {
     '식비': Utensils,
@@ -187,6 +188,12 @@ export default function HistoryPage() {
     const [loading, setLoading] = useState(true)
     const [viewType, setViewType] = useState<'list' | 'calendar'>('list')
     const [selectedDate, setSelectedDate] = useState<string | null>(null)
+    const [members, setMembers] = useState<Member[]>([])
+    const [categories, setCategories] = useState<Category[]>([])
+    const [isFilterOpen, setIsFilterOpen] = useState(false)
+    const [filterMember, setFilterMember] = useState<string | null>(null)
+    const [filterCategoryGroup, setFilterCategoryGroup] = useState<TransactionType | null>(null)
+    const [filterCategory, setFilterCategory] = useState<string | null>(null)
 
     // Scroll to selected date when timeline opens
     useEffect(() => {
@@ -199,6 +206,20 @@ export default function HistoryPage() {
             }, 100)
         }
     }, [isTimelineOpen])
+
+    // 멤버·카테고리 최초 1회 로딩
+    useEffect(() => {
+        async function fetchStaticData() {
+            try {
+                const [membersData, categoriesData] = await Promise.all([getMembers(), getCategories()])
+                setMembers(membersData)
+                setCategories(categoriesData)
+            } catch (e) {
+                console.error('Error fetching static data:', e)
+            }
+        }
+        fetchStaticData()
+    }, [])
 
     useEffect(() => {
         async function fetchData() {
@@ -243,11 +264,25 @@ export default function HistoryPage() {
         setIsTimelineOpen(false)
     }
 
-    const groupedTransactions = groupByDate(transactions)
+    // 필터 적용된 거래 내역
+    const filteredTransactions = transactions.filter((tx) => {
+        if (filterMember) {
+            const member = members.find((m) => m.id === filterMember)
+            if (tx.memberName !== member?.name) return false
+        }
+        if (filterCategoryGroup && tx.transactionType !== filterCategoryGroup) return false
+        if (filterCategory && tx.category !== filterCategory) return false
+        return true
+    })
+
+    // 활성 필터 개수
+    const activeFilterCount = [filterMember, filterCategoryGroup, filterCategory].filter(Boolean).length
+
+    const groupedTransactions = groupByDate(filteredTransactions)
     const months = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]
     const timeline = generateTimeline()
 
-    // Calculate total expense amount from expense transactions only
+    // 이번 달 총 지출 (필터와 무관하게 항상 expense 합산)
     const totalAmount = transactions
         .filter(t => t.transactionType === 'expense')
         .reduce((sum, transaction) => sum + transaction.amount, 0)
@@ -332,8 +367,25 @@ export default function HistoryPage() {
                     </p>
                 </motion.div>
 
-                {/* View Toggle Button */}
-                <div className="flex justify-end mt-3">
+                {/* View Toggle & Filter Buttons */}
+                <div className="flex justify-end items-center gap-2 mt-3">
+                    {/* 필터 버튼 */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setIsFilterOpen(true)}
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm border border-gray-100/50 active:scale-95 transition-transform hover:bg-gray-50 ${activeFilterCount > 0 ? 'bg-[#0047AB]' : 'bg-white'
+                                }`}
+                        >
+                            <SlidersHorizontal className={`w-5 h-5 ${activeFilterCount > 0 ? 'text-white' : 'text-gray-600'}`} />
+                        </button>
+                        {activeFilterCount > 0 && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                                {activeFilterCount}
+                            </span>
+                        )}
+                    </div>
+
+                    {/* 보기 타입 토글 */}
                     <button
                         onClick={() => setViewType(viewType === 'list' ? 'calendar' : 'list')}
                         className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm border border-gray-100/50 active:scale-95 transition-transform hover:bg-gray-50"
@@ -345,6 +397,39 @@ export default function HistoryPage() {
                         )}
                     </button>
                 </div>
+
+                {/* 활성 필터 칩 */}
+                {activeFilterCount > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                        {filterMember && (() => {
+                            const member = members.find(m => m.id === filterMember)
+                            return member ? (
+                                <span className="flex items-center gap-1.5 bg-[#0047AB]/10 text-[#0047AB] text-xs font-semibold px-3 py-1.5 rounded-full">
+                                    {member.name}
+                                    <button onClick={() => setFilterMember(null)} className="hover:text-blue-900">
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </span>
+                            ) : null
+                        })()}
+                        {filterCategoryGroup && (
+                            <span className="flex items-center gap-1.5 bg-gray-100 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+                                {({ expense: '지출', income: '수입', savings: '저축', investment: '투자' } as Record<string, string>)[filterCategoryGroup]}
+                                <button onClick={() => setFilterCategoryGroup(null)} className="hover:text-gray-900">
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </span>
+                        )}
+                        {filterCategory && (
+                            <span className="flex items-center gap-1.5 bg-gray-100 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+                                {filterCategory}
+                                <button onClick={() => setFilterCategory(null)} className="hover:text-gray-900">
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </span>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Content Area - List or Calendar View */}
@@ -625,6 +710,23 @@ export default function HistoryPage() {
                     </motion.div>
                 </div>
             )}
+
+            {/* Filter Modal */}
+            <FilterModal
+                isOpen={isFilterOpen}
+                onClose={() => setIsFilterOpen(false)}
+                members={members}
+                categories={categories}
+                transactions={transactions}
+                filterMember={filterMember}
+                filterCategoryGroup={filterCategoryGroup}
+                filterCategory={filterCategory}
+                onApply={(member, group, category) => {
+                    setFilterMember(member)
+                    setFilterCategoryGroup(group)
+                    setFilterCategory(category)
+                }}
+            />
 
             {/* Bottom Navigation */}
             <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-200/50 px-6 pb-safe">
