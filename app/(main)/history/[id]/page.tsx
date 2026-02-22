@@ -406,7 +406,7 @@ export default function TransactionDetailPage() {
                         </div>
 
                         <div className="grid grid-cols-4 gap-3">
-                            {categories.map((category) => {
+                            {filteredCategories.map((category) => {
                                 const Icon = iconMap[category.name] || MoreHorizontal
                                 const colorClass = colorMap[category.name] || 'bg-gray-100 text-gray-600'
                                 const isSelected = selectedCategory === category.id
