@@ -33,29 +33,36 @@ export function TransactionList({ transactions, className }: TransactionListProp
             </div>
 
             <Card className="bg-white rounded-3xl shadow-sm border-0 overflow-hidden">
-                <div className="divide-y divide-gray-100">
-                    {transactions.map((transaction, index) => (
-                        <Link
-                            key={transaction.id}
-                            href={`/history/${transaction.id}`}
-                            className={`px-5 py-4 flex items-center justify-between active:bg-gray-50 transition-colors ${index === 0 ? 'pt-5' : ''
-                                } ${index === transactions.length - 1 ? 'pb-5' : ''}`}
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className={`w-11 h-11 rounded-2xl ${transaction.color} flex items-center justify-center text-xl`}>
-                                    {transaction.icon}
+                {transactions.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 px-5 gap-2">
+                        <p className="text-3xl">🧾</p>
+                        <p className="text-sm font-medium text-gray-400">아직 내역이 없어요</p>
+                    </div>
+                ) : (
+                    <div className="divide-y divide-gray-100">
+                        {transactions.map((transaction, index) => (
+                            <Link
+                                key={transaction.id}
+                                href={`/history/${transaction.id}`}
+                                className={`px-5 py-4 flex items-center justify-between active:bg-gray-50 transition-colors ${index === 0 ? 'pt-5' : ''
+                                    } ${index === transactions.length - 1 ? 'pb-5' : ''}`}
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-11 h-11 rounded-2xl ${transaction.color} flex items-center justify-center text-xl`}>
+                                        {transaction.icon}
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-gray-900 text-[15px]">{transaction.category}</p>
+                                        <p className="text-xs text-gray-500 mt-0.5">{transaction.date}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="font-semibold text-gray-900 text-[15px]">{transaction.category}</p>
-                                    <p className="text-xs text-gray-500 mt-0.5">{transaction.date}</p>
-                                </div>
-                            </div>
-                            <p className="text-base font-bold text-gray-900">
-                                -₩{transaction.amount.toLocaleString()}
-                            </p>
-                        </Link>
-                    ))}
-                </div>
+                                <p className="text-base font-bold text-gray-900">
+                                    -₩{transaction.amount.toLocaleString()}
+                                </p>
+                            </Link>
+                        ))}
+                    </div>
+                )}
             </Card>
         </div>
     )
