@@ -1,23 +1,43 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { getUser } from "@/lib/supabase/auth"
 import { createGroup, joinGroupByCode } from "@/lib/supabase/groups"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, Users } from "lucide-react"
+import { Plus, Users, QrCode } from "lucide-react"
+import { Suspense } from "react"
 
 export default function OnboardingPage() {
     const router = useRouter()
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center"><p className="text-gray-500">로딩 중...</p></div>}>
+            <OnboardingContent />
+        </Suspense>
+    )
+}
+
+function OnboardingContent() {
+    const router = useRouter()
+    const searchParams = useSearchParams()
+    const codeFromUrl = searchParams.get('code') || ''
     const [mode, setMode] = useState<'select' | 'create' | 'join'>('select')
     const [groupName, setGroupName] = useState('')
     const [inviteCode, setInviteCode] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [user, setUser] = useState<any>(null)
+
+    // URL에 code 파라미터가 있으면 join 모드로 자동 전환
+    useEffect(() => {
+        if (codeFromUrl) {
+            setInviteCode(codeFromUrl.toUpperCase())
+            setMode('join')
+        }
+    }, [codeFromUrl])
 
     useEffect(() => {
         async function fetchUser() {
@@ -174,7 +194,15 @@ export default function OnboardingPage() {
                 {/* Join Group Mode */}
                 {mode === 'join' && (
                     <Card className="bg-white rounded-3xl p-8 shadow-sm border-0">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-6">그룹 참여하기</h2>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">그룹 참여하기</h2>
+
+                        {/* QR 스캔으로 접속 시 안내 */}
+                        {codeFromUrl && (
+                            <div className="mb-5 p-3 bg-green-50 border border-green-100 rounded-xl flex items-center gap-2">
+                                <QrCode className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                <p className="text-sm text-green-700 font-medium">QR 코드로 접속하셨습니다. 초대 코드가 자동 입력됐어요!</p>
+                            </div>
+                        )}
 
                         <form onSubmit={handleJoinGroup} className="space-y-4">
                             <div>

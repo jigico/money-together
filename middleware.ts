@@ -65,7 +65,13 @@ export async function middleware(request: NextRequest) {
     // 미인증 사용자 처리
     if (!user && !isPublicPath) {
         console.log('[Middleware] No user, redirect to /login')
-        return NextResponse.redirect(new URL('/login', request.url))
+        const loginUrl = new URL('/login', request.url)
+        // 원래 접근하려던 URL을 redirect 파라미터로 보존 (code 파라미터 포함)
+        const originalPath = request.nextUrl.pathname + request.nextUrl.search
+        if (originalPath !== '/') {
+            loginUrl.searchParams.set('redirect', originalPath)
+        }
+        return NextResponse.redirect(loginUrl)
     }
 
     // 인증된 사용자가 로그인 페이지 접근 시
@@ -82,8 +88,16 @@ export async function middleware(request: NextRequest) {
             console.log('[Middleware] Logged in user has group, redirect to /')
             return NextResponse.redirect(new URL('/', request.url))
         } else {
+            // 로그인 페이지에 redirect 파라미터가 있으면 (QR 코드 등) onboarding에 전달
+            const redirectParam = request.nextUrl.searchParams.get('redirect')
+            const onboardingUrl = new URL('/onboarding', request.url)
+            if (redirectParam) {
+                const redirectUrl = new URL(redirectParam, request.url)
+                const code = redirectUrl.searchParams.get('code')
+                if (code) onboardingUrl.searchParams.set('code', code)
+            }
             console.log('[Middleware] Logged in user no group, redirect to /onboarding')
-            return NextResponse.redirect(new URL('/onboarding', request.url))
+            return NextResponse.redirect(onboardingUrl)
         }
     }
 
