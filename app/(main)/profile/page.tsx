@@ -19,7 +19,8 @@ import {
     QrCode,
     Copy,
     Check,
-    X
+    X,
+    Pencil
 } from "lucide-react"
 import Link from "next/link"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -29,6 +30,7 @@ import { getCurrentGroupInfo } from "@/lib/supabase/group-info"
 import { getMembers } from "@/lib/supabase/queries"
 import { getBudget, upsertBudget } from "@/lib/supabase/budget"
 import { getCurrentUserMemberId } from "@/lib/supabase/helpers"
+import { updateMemberName } from "@/lib/supabase/mutations"
 import { QRCodeSVG } from "qrcode.react"
 import type { Member } from "@/types/database"
 
@@ -41,6 +43,9 @@ export default function ProfilePage() {
     const [budgetInput, setBudgetInput] = useState("")
     const [currentBudget, setCurrentBudget] = useState(2_000_000)
     const [savingBudget, setSavingBudget] = useState(false)
+    const [showNameModal, setShowNameModal] = useState(false)
+    const [nameInput, setNameInput] = useState("")
+    const [savingName, setSavingName] = useState(false)
 
     // User & Group Data
     const [userEmail, setUserEmail] = useState("")
@@ -60,7 +65,8 @@ export default function ProfilePage() {
                 }
 
                 setUserEmail(session.user.email || "")
-                setUserNickname(session.user.user_metadata?.nickname || "사용자")
+                // user_metadata는 비어있을 수 있으므로 임시 폴백만 사용
+                setUserNickname(session.user.user_metadata?.nickname || "")
 
                 // Get group info
                 const groupInfo = await getCurrentGroupInfo()
@@ -69,9 +75,13 @@ export default function ProfilePage() {
                     setInviteCode(groupInfo.invite_code || "")
                 }
 
-                // Get members
+                // Get members — 현재 사용자의 멤버 이름을 members 테이블에서 직접 읽기
                 const membersData = await getMembers()
                 setMembers(membersData)
+                const myMember = membersData.find(m => m.user_id === session.user.id)
+                if (myMember) {
+                    setUserNickname(myMember.name)
+                }
 
                 // Get budget
                 const now = new Date()
@@ -129,6 +139,31 @@ export default function ProfilePage() {
         }
     }
 
+    const handleOpenNameModal = () => {
+        setNameInput(userNickname)
+        setShowNameModal(true)
+    }
+
+    const handleSaveName = async () => {
+        const trimmed = nameInput.trim()
+        if (!trimmed) return
+        setSavingName(true)
+        try {
+            const result = await updateMemberName(trimmed)
+            if (result.success) {
+                setUserNickname(trimmed)
+                setShowNameModal(false)
+            } else {
+                alert(result.error || '이름 변경에 실패했습니다.')
+            }
+        } catch (e) {
+            console.error(e)
+            alert('이름 변경 중 오류가 발생했습니다.')
+        } finally {
+            setSavingName(false)
+        }
+    }
+
     const inviteUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/onboarding?code=${inviteCode}`
 
     if (loading) {
@@ -156,7 +191,15 @@ export default function ProfilePage() {
                             </AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
-                            <h2 className="text-xl font-bold text-gray-900 mb-1">{userNickname}</h2>
+                            <div className="flex items-center gap-2 mb-1">
+                                <h2 className="text-xl font-bold text-gray-900">{userNickname}</h2>
+                                <button
+                                    onClick={handleOpenNameModal}
+                                    className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center active:scale-95 transition-transform hover:bg-gray-200"
+                                >
+                                    <Pencil className="w-3.5 h-3.5 text-gray-500" />
+                                </button>
+                            </div>
                             <p className="text-sm text-gray-500">{userEmail}</p>
                         </div>
                     </div>
@@ -287,6 +330,53 @@ export default function ProfilePage() {
                     머니투게더 v1.0.0
                 </p>
             </div>
+
+            {/* Name Edit Modal */}
+            {showNameModal && (
+                <div
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-center z-50"
+                    onClick={() => setShowNameModal(false)}
+                >
+                    <div
+                        className="bg-white rounded-t-3xl p-6 w-full max-w-lg shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex justify-center mb-3">
+                            <div className="w-10 h-1 bg-gray-200 rounded-full" />
+                        </div>
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-bold text-gray-900">이름 변경</h3>
+                            <button
+                                onClick={() => setShowNameModal(false)}
+                                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
+                            >
+                                <X className="w-5 h-5 text-gray-600" />
+                            </button>
+                        </div>
+                        <div className="mb-6">
+                            <label className="text-sm text-gray-500 mb-2 block">그룹 내 표시 이름</label>
+                            <input
+                                type="text"
+                                value={nameInput}
+                                onChange={(e) => setNameInput(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
+                                maxLength={20}
+                                className="w-full px-4 py-4 text-lg font-semibold text-gray-900 border-2 border-gray-200 rounded-2xl focus:border-blue-500 focus:outline-none"
+                                placeholder="이름을 입력하세요"
+                                autoFocus
+                            />
+                            <p className="text-xs text-gray-400 mt-2 text-right">{nameInput.length}/20</p>
+                        </div>
+                        <button
+                            onClick={handleSaveName}
+                            disabled={savingName || !nameInput.trim()}
+                            className="w-full bg-[#0047AB] text-white rounded-2xl py-4 font-semibold text-base active:scale-[0.98] transition-transform disabled:opacity-40 shadow-lg shadow-blue-900/25"
+                        >
+                            {savingName ? '저장 중...' : '저장'}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* QR Code Modal */}
             {showQRModal && (

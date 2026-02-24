@@ -78,3 +78,35 @@ export async function deleteTransaction(id: string) {
 
     return true
 }
+
+// 내 멤버 이름 수정 (members 테이블 + Auth 메타데이터 동시 업데이트)
+export async function updateMemberName(name: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        // 1. 현재 사용자 ID 조회
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: '로그인이 필요합니다.' }
+
+        // 2. 현재 그룹의 멤버 row 찾아 name 업데이트
+        const groupId = await getCurrentGroupId()
+        if (!groupId) return { success: false, error: '그룹 정보를 찾을 수 없습니다.' }
+
+        const { error: memberError } = await supabase
+            .from('members')
+            // @ts-ignore
+            .update({ name } as any)
+            .eq('user_id', user.id)
+            .eq('group_id', groupId)
+
+        if (memberError) {
+            return { success: false, error: '이름 변경에 실패했습니다.' }
+        }
+
+        // 3. Auth 메타데이터의 nickname도 동기화
+        await supabase.auth.updateUser({ data: { nickname: name } })
+
+        return { success: true }
+    } catch (error) {
+        console.error('Error updating member name:', error)
+        return { success: false, error: '이름 변경 중 오류가 발생했습니다.' }
+    }
+}
