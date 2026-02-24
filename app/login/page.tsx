@@ -83,9 +83,9 @@ function LoginContent() {
                     return
                 }
 
-                // 로그인 성공 → redirect 파라미터 or 미들웨어 판단
+                // 로그인 성공 → replace로 이동 (히스토리에 로그인 페이지를 남기지 않음)
                 const dest = getSuccessRedirect()
-                window.location.href = dest || '/'
+                window.location.replace(dest || '/')
             }
         } catch (err) {
             setError('오류가 발생했습니다. 다시 시도해주세요.')
