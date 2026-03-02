@@ -225,8 +225,10 @@ export default function HistoryPage() {
         async function fetchData() {
             setLoading(true)
             try {
-                const startOfMonth = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0]
-                const endOfMonth = new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0]
+                const pad = (n: number) => String(n).padStart(2, '0')
+                const startOfMonth = `${currentYear}-${pad(currentMonth + 1)}-01`
+                const lastDay = new Date(currentYear, currentMonth + 1, 0).getDate()
+                const endOfMonth = `${currentYear}-${pad(currentMonth + 1)}-${pad(lastDay)}`
 
                 const data = await getTransactions(startOfMonth, endOfMonth)
                 setTransactions(data)
