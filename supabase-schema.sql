@@ -122,6 +122,5 @@ BEGIN
     (mvp_group_id, 15000, food_id, husband_id, '편의점', CURRENT_DATE - 3);
 END $$;
 
--- 현재 MVP 그룹 ID 확인용 뷰
-CREATE OR REPLACE VIEW current_group AS
-SELECT id as group_id, name FROM groups WHERE name = 'MVP 부부' LIMIT 1;
+-- NOTE: current_group 뷰는 MVP 초기 임시 뷰로, 현재 앱에서 사용하지 않음 (삭제됨)
+-- 현재 그룹 ID는 helpers.ts의 getCurrentGroupId()에서 Auth 기반으로 조회함
