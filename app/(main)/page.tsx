@@ -31,19 +31,21 @@ export default function MoneyTogetherDashboard() {
                 const now = new Date()
                 const year = now.getFullYear()
                 const month = now.getMonth() + 1
-                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-                    .toISOString().split('T')[0]
-                const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-                    .toISOString().split('T')[0]
+                const pad = (n: number) => String(n).padStart(2, '0')
+
+                const startOfMonth = `${year}-${pad(month)}-01`
+                const lastDay = new Date(year, month, 0).getDate()
+                const endOfMonth = `${year}-${pad(month)}-${pad(lastDay)}`
 
                 // 전월의 시작일과 종료일
-                const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-                    .toISOString().split('T')[0]
-                const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
-                    .toISOString().split('T')[0]
+                const prevMonth = month === 1 ? 12 : month - 1
+                const prevYear = month === 1 ? year - 1 : year
+                const startOfLastMonth = `${prevYear}-${pad(prevMonth)}-01`
+                const lastDayOfPrev = new Date(prevYear, prevMonth, 0).getDate()
+                const endOfLastMonth = `${prevYear}-${pad(prevMonth)}-${pad(lastDayOfPrev)}`
 
                 // 오늘 날짜
-                const today = now.toISOString().split('T')[0]
+                const today = `${year}-${pad(month)}-${pad(now.getDate())}`
 
                 // 데이터 가져오기
                 const [allTransactions, monthlyTotal, lastMonthTotal, dailyTotal, membersData, budgetAmount, incomeTotal, savTotal, invTotal] = await Promise.all([

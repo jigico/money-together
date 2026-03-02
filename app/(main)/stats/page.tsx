@@ -12,7 +12,8 @@ import type { MemberFinancialSummary } from "@/lib/supabase/queries"
 import { MemberFinancialProfile } from "@/components/stats/member-financial-profile"
 
 export default function StatsPage() {
-    const [currentMonth, setCurrentMonth] = useState({ year: 2026, month: 2 }) // 현재 월: 2026년 2월
+    const now = new Date()
+    const [currentMonth, setCurrentMonth] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 })
     const [categoryData, setCategoryData] = useState<CategoryData[]>([])
     const [memberSpending, setMemberSpending] = useState<MemberSpending[]>([])
     const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([])
@@ -27,18 +28,17 @@ export default function StatsPage() {
             setLoading(true)
             try {
                 // 현재 월의 시작일과 종료일
-                const startOfMonth = new Date(currentMonth.year, currentMonth.month - 1, 1)
-                    .toISOString().split('T')[0]
-                const endOfMonth = new Date(currentMonth.year, currentMonth.month, 0)
-                    .toISOString().split('T')[0]
+                const pad = (n: number) => String(n).padStart(2, '0')
+                const startOfMonth = `${currentMonth.year}-${pad(currentMonth.month)}-01`
+                const lastDay = new Date(currentMonth.year, currentMonth.month, 0).getDate()
+                const endOfMonth = `${currentMonth.year}-${pad(currentMonth.month)}-${pad(lastDay)}`
 
                 // 이전 월의 시작일과 종료일
-                const prevMonth = currentMonth.month === 1 ? 12 : currentMonth.month - 1
-                const prevYear = currentMonth.month === 1 ? currentMonth.year - 1 : currentMonth.year
-                const startOfPrevMonth = new Date(prevYear, prevMonth - 1, 1)
-                    .toISOString().split('T')[0]
-                const endOfPrevMonth = new Date(prevYear, prevMonth, 0)
-                    .toISOString().split('T')[0]
+                const prevM = currentMonth.month === 1 ? 12 : currentMonth.month - 1
+                const prevY = currentMonth.month === 1 ? currentMonth.year - 1 : currentMonth.year
+                const startOfPrevMonth = `${prevY}-${pad(prevM)}-01`
+                const lastDayOfPrev = new Date(prevY, prevM, 0).getDate()
+                const endOfPrevMonth = `${prevY}-${pad(prevM)}-${pad(lastDayOfPrev)}`
 
                 // 데이터 가져오기
                 const [categories, members, monthly, top, total, prevTotal, memberFinancialsData] = await Promise.all([
