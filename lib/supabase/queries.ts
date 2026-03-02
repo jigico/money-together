@@ -190,8 +190,12 @@ export async function getMonthlySpending(monthsBack: number = 5): Promise<{ mont
 
     for (let i = monthsBack - 1; i >= 0; i--) {
         const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-        const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0]
-        const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split('T')[0]
+        const pad = (n: number) => String(n).padStart(2, '0')
+        const y = date.getFullYear()
+        const m = date.getMonth() + 1
+        const startOfMonth = `${y}-${pad(m)}-01`
+        const lastDay = new Date(y, m, 0).getDate()
+        const endOfMonth = `${y}-${pad(m)}-${pad(lastDay)}`
 
         const { data }: { data: { amount: number }[] | null } = await supabase
             .from('transactions')
