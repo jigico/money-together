@@ -266,6 +266,50 @@ export async function getTotalSpending(startDate?: string, endDate?: string): Pr
     return data.reduce((sum, tx) => sum + tx.amount, 0)
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 대시보드 집계 통합 쿼리
+// 이전: getTotalSpending + getTotalByType x3 = 4개 별도 요청
+// 이후: 단일 쿼리로 amount + transaction_type 가져와 클라이언트에서 집계
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface DashboardSummary {
+    expense: number
+    income: number
+    savings: number
+    investment: number
+}
+
+export async function getDashboardSummary(
+    startDate: string,
+    endDate: string
+): Promise<DashboardSummary> {
+    const empty: DashboardSummary = { expense: 0, income: 0, savings: 0, investment: 0 }
+
+    const groupId = await getCurrentGroupId()
+    if (!groupId) return empty
+
+    const { data, error } = await (supabase as any)
+        .from('transactions')
+        .select('amount, transaction_type')
+        .eq('group_id', groupId)
+        .gte('date', startDate)
+        .lte('date', endDate)
+
+    if (error || !data) {
+        console.error('Error fetching dashboard summary:', error)
+        return empty
+    }
+
+    return (data as { amount: number; transaction_type: string }[]).reduce(
+        (acc, tx) => {
+            const key = tx.transaction_type as keyof DashboardSummary
+            if (key in acc) acc[key] += tx.amount
+            return acc
+        },
+        { ...empty }
+    )
+}
+
 // 유형별 합계 가져오기 (income/expense/savings/investment)
 export async function getTotalByType(
     type: TransactionType,

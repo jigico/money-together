@@ -6,7 +6,7 @@ import { SpendingSummaryCard } from "@/components/dashboard/spending-summary-car
 import { QuickStatsGrid } from "@/components/dashboard/quick-stats-grid"
 import { TransactionList, type Transaction } from "@/components/dashboard/transaction-list"
 import { FloatingActionButton } from "@/components/dashboard/floating-action-button"
-import { getTransactions, getTotalSpending, getMembers, getTotalByType } from "@/lib/supabase/queries"
+import { getTransactions, getDashboardSummary, getMembers } from "@/lib/supabase/queries"
 import { getBudget } from "@/lib/supabase/budget"
 import { IncomeRatioCard } from "@/components/dashboard/income-ratio-card"
 import type { Member } from "@/types/database"
@@ -47,31 +47,28 @@ export default function MoneyTogetherDashboard() {
                 // 오늘 날짜
                 const today = `${year}-${pad(month)}-${pad(now.getDate())}`
 
-                // 데이터 가져오기
-                const [allTransactions, monthlyTotal, lastMonthTotal, dailyTotal, membersData, budgetAmount, incomeTotal, savTotal, invTotal] = await Promise.all([
+                // 데이터 가져오기 (통합 쿼리: 4개 → 2개로 감소))
+                const [allTransactions, thisSummary, lastSummary, todaySummary, membersData, budgetAmount] = await Promise.all([
                     getTransactions(),
-                    getTotalSpending(startOfMonth, endOfMonth),
-                    getTotalSpending(startOfLastMonth, endOfLastMonth),
-                    getTotalSpending(today, today),
+                    getDashboardSummary(startOfMonth, endOfMonth),
+                    getDashboardSummary(startOfLastMonth, endOfLastMonth),
+                    getDashboardSummary(today, today),
                     getMembers(),
                     getBudget(year, month),
-                    getTotalByType('income', startOfMonth, endOfMonth),
-                    getTotalByType('savings', startOfMonth, endOfMonth),
-                    getTotalByType('investment', startOfMonth, endOfMonth),
                 ])
 
                 setTransactions(allTransactions.slice(0, 5))
-                setTotalSpent(monthlyTotal)
-                setTodaySpent(dailyTotal)
+                setTotalSpent(thisSummary.expense)
+                setTodaySpent(todaySummary.expense)
                 setMembers(membersData)
                 setBudget(budgetAmount)
-                setIncome(incomeTotal)
-                setSavingsTotal(savTotal)
-                setInvestmentTotal(invTotal)
+                setIncome(thisSummary.income)
+                setSavingsTotal(thisSummary.savings)
+                setInvestmentTotal(thisSummary.investment)
 
                 // 전월 대비 계산
-                if (lastMonthTotal > 0) {
-                    const change = ((monthlyTotal - lastMonthTotal) / lastMonthTotal) * 100
+                if (lastSummary.expense > 0) {
+                    const change = ((thisSummary.expense - lastSummary.expense) / lastSummary.expense) * 100
                     setMonthlyChange(Math.round(change * 10) / 10) // 소수점 1자리
                 } else {
                     setMonthlyChange(null) // 전월 데이터 없음
