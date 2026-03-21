@@ -266,6 +266,50 @@ export async function getTotalSpending(startDate?: string, endDate?: string): Pr
     return data.reduce((sum, tx) => sum + tx.amount, 0)
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 대시보드 집계 통합 쿼리
+// 이전: getTotalSpending + getTotalByType x3 = 4개 별도 요청
+// 이후: 단일 쿼리로 amount + transaction_type 가져와 클라이언트에서 집계
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface DashboardSummary {
+    expense: number
+    income: number
+    savings: number
+    investment: number
+}
+
+export async function getDashboardSummary(
+    startDate: string,
+    endDate: string
+): Promise<DashboardSummary> {
+    const empty: DashboardSummary = { expense: 0, income: 0, savings: 0, investment: 0 }
+
+    const groupId = await getCurrentGroupId()
+    if (!groupId) return empty
+
+    const { data, error } = await (supabase as any)
+        .from('transactions')
+        .select('amount, transaction_type')
+        .eq('group_id', groupId)
+        .gte('date', startDate)
+        .lte('date', endDate)
+
+    if (error || !data) {
+        console.error('Error fetching dashboard summary:', error)
+        return empty
+    }
+
+    return (data as { amount: number; transaction_type: string }[]).reduce(
+        (acc, tx) => {
+            const key = tx.transaction_type as keyof DashboardSummary
+            if (key in acc) acc[key] += tx.amount
+            return acc
+        },
+        { ...empty }
+    )
+}
+
 // 유형별 합계 가져오기 (income/expense/savings/investment)
 export async function getTotalByType(
     type: TransactionType,
@@ -452,4 +496,238 @@ function getCategoryColorClass(categoryName: string): string {
         '기타': 'bg-gray-100',
     }
     return colorMap[categoryName] || 'bg-gray-100'
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 통계 페이지 전용 통합 조회 함수 (O(N) -> O(1) 최적화)
+// 문제점: getCategorySpending, getMemberSpending, getTopCategories, 
+//         getMemberFinancialSummary가 개별적으로 `transactions`를 조회하며
+//         특히 N+1 쿼리(멤버마다 별도 쿼리)를 발생시킴.
+// 해결책: 이번 달 트랜잭션을 한 번만 조회한 뒤 메모리에서 조립함.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface StatsDashboardData {
+    categoryData: CategoryDataUI[]
+    memberSpending: MemberSpendingUI[]
+    topCategories: any[]
+    totalSpending: number
+    memberFinancials: MemberFinancialSummary[]
+}
+
+export async function getStatsDashboardData(
+    startDate: string,
+    endDate: string
+): Promise<StatsDashboardData> {
+    const empty: StatsDashboardData = {
+        categoryData: [],
+        memberSpending: [],
+        topCategories: [],
+        totalSpending: 0,
+        memberFinancials: []
+    }
+
+    const groupId = await getCurrentGroupId()
+    if (!groupId) return empty
+
+    // 1. Members 단일 조회
+    const { data: members, error: membersError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('group_id', groupId)
+
+    if (membersError || !members) return empty
+    const typedMembers = members as Member[]
+
+    // 2. Transactions (이번 달 전체) 단일 조회
+    const { data: transactions, error: txError } = await supabase
+        .from('transactions')
+        .select(`
+            amount,
+            transaction_type,
+            member_id,
+            category:categories(name, color)
+        `)
+        .eq('group_id', groupId)
+        .gte('date', startDate)
+        .lte('date', endDate)
+
+    if (txError || !transactions) return empty
+
+    // ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ
+    // 3. 메모리 상에서 데이터 집계 (Reducer)
+    // ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ
+
+    // 카테고리별 지출 (expense만)
+    const categoryMap = new Map<string, { value: number; color: string }>()
+    // 전체 지출 (expense만)
+    let totalSpending = 0
+    
+    // 멤버별 각종 데이터 맵
+    const memberMap = new Map<string, {
+        expense: number, income: number, savings: number, investment: number,
+        catMap: Map<string, { amount: number, color: string }>
+    }>()
+
+    // 맵 초기화
+    typedMembers.forEach(m => {
+        memberMap.set(m.id, {
+            expense: 0, income: 0, savings: 0, investment: 0,
+            catMap: new Map()
+        })
+    })
+
+    // 1-Pass 반복
+    transactions.forEach((tx: any) => {
+        const type = tx.transaction_type as TransactionType
+        const amount = tx.amount
+        const memberId = tx.member_id
+
+        // 멤버별 합계
+        const mData = memberMap.get(memberId)
+        if (mData) {
+            mData[type] += amount
+        }
+
+        // 지출(expense)인 경우 카테고리/전체 합산 처리
+        if (type === 'expense') {
+            totalSpending += amount
+
+            // 전체 카테고리 통계
+            const catName = tx.category?.name || '기타'
+            const catColor = tx.category?.color || '#9CA3AF'
+            
+            const existingCat = categoryMap.get(catName)
+            if (existingCat) existingCat.value += amount
+            else categoryMap.set(catName, { value: amount, color: catColor })
+
+            // 멤버별 카테고리 통계
+            if (mData) {
+                const mCatExisting = mData.catMap.get(catName)
+                if (mCatExisting) mCatExisting.amount += amount
+                else mData.catMap.set(catName, { amount, color: catColor })
+            }
+        }
+    })
+
+    // ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ
+    // 4. UI 포맷으로 변환
+    // ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ
+
+    // CategoryDataUI
+    const categoryData: CategoryDataUI[] = Array.from(categoryMap.entries()).map(([name, data]) => ({
+        name,
+        value: data.value,
+        color: data.color
+    }))
+
+    // TopCategories (정렬 & 매핑)
+    const topCategories = [...categoryData]
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 3)
+        .map((cat, index) => ({
+            rank: index + 1,
+            name: cat.name,
+            amount: cat.value,
+            icon: getIconForCategory(cat.name),
+            color: getCategoryColorClass(cat.name)
+        }))
+
+    // MemberSpendingUI & MemberFinancialSummary
+    const memberSpending: MemberSpendingUI[] = []
+    const memberFinancials: MemberFinancialSummary[] = []
+
+    typedMembers.forEach(member => {
+        const mData = memberMap.get(member.id)!
+        
+        // MemberSpendingUI
+        memberSpending.push(memberToUI(member, mData.expense))
+
+        // MemberFinancialSummary 내 topCategories 조립
+        const sortedCats = Array.from(mData.catMap.entries())
+            .map(([name, val]) => ({ name, ...val }))
+            .sort((a, b) => b.amount - a.amount)
+        
+        const top3 = sortedCats.slice(0, 3)
+        const rest = sortedCats.slice(3)
+        if (rest.length > 0) {
+            const otherAmount = rest.reduce((s, c) => s + c.amount, 0)
+            top3.push({ name: '기타', amount: otherAmount, color: '#9CA3AF' })
+        }
+
+        memberFinancials.push({
+            memberId: member.id,
+            memberName: member.name,
+            memberAvatar: member.avatar,
+            memberColor: member.color,
+            memberBgColor: member.bg_color,
+            income: mData.income,
+            expense: mData.expense,
+            savings: mData.savings,
+            investment: mData.investment,
+            topCategories: top3
+        })
+    })
+
+    return {
+        categoryData,
+        memberSpending,
+        topCategories,
+        totalSpending,
+        memberFinancials
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 월별 지출 추이 통합 조회 (5개 쿼리 -> 1개 쿼리로 최적화)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getOptimizedMonthlySpending(monthsBack: number = 5): Promise<{ month: string; amount: number }[]> {
+    const groupId = await getCurrentGroupId()
+    if (!groupId) return []
+
+    const now = new Date()
+    // 시작일(N개월 전 1일)
+    const startDateObj = new Date(now.getFullYear(), now.getMonth() - (monthsBack - 1), 1)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const startStr = `${startDateObj.getFullYear()}-${pad(startDateObj.getMonth() + 1)}-01`
+    
+    // 종료일(이번 달 말일)
+    const endStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate())}`
+
+    // 1. 단일 쿼리로 전체 범위 가져오기
+    const { data: transactions, error } = await supabase
+        .from('transactions')
+        .select('date, amount')
+        .eq('group_id', groupId)
+        .eq('transaction_type', 'expense')
+        .gte('date', startStr)
+        .lte('date', endStr)
+
+    if (error || !transactions) return []
+
+    // 2. 월별로 그룹화
+    // 기본 배열 세팅 (과거 월 -> 현재 월)
+    const monthlyData: { month: string; amount: number; key: string }[] = []
+    
+    for (let i = monthsBack - 1; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        const key = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`
+        monthlyData.push({
+            month: `${d.getMonth() + 1}월`,
+            amount: 0,
+            key
+        })
+    }
+
+    // 데이터 합산
+    transactions.forEach((tx: any) => {
+        // tx.date: '2024-03-21' -> key: '2024-03'
+        const txKey = tx.date.substring(0, 7)
+        const targetMonth = monthlyData.find(m => m.key === txKey)
+        if (targetMonth) {
+            targetMonth.amount += tx.amount
+        }
+    })
+
+    return monthlyData.map(({ month, amount }) => ({ month, amount }))
 }
