@@ -7,7 +7,7 @@ import { CategoryDonutChart, type CategoryData } from "@/components/stats/catego
 import { MemberComparisonBar, type MemberSpending } from "@/components/stats/member-comparison-bar"
 import { MonthlyTrendChart, type MonthlyData } from "@/components/stats/monthly-trend-chart"
 import { TopCategoriesList, type TopCategory } from "@/components/stats/top-categories-list"
-import { getCategorySpending, getMemberSpending, getMonthlySpending, getTopCategories, getTotalSpending, getMemberFinancialSummary } from "@/lib/supabase/queries"
+import { getDashboardSummary, getStatsDashboardData, getOptimizedMonthlySpending } from "@/lib/supabase/queries"
 import type { MemberFinancialSummary } from "@/lib/supabase/queries"
 import { MemberFinancialProfile } from "@/components/stats/member-financial-profile"
 
@@ -40,24 +40,20 @@ export default function StatsPage() {
                 const lastDayOfPrev = new Date(prevY, prevM, 0).getDate()
                 const endOfPrevMonth = `${prevY}-${pad(prevM)}-${pad(lastDayOfPrev)}`
 
-                // 데이터 가져오기
-                const [categories, members, monthly, top, total, prevTotal, memberFinancialsData] = await Promise.all([
-                    getCategorySpending(startOfMonth, endOfMonth),
-                    getMemberSpending(startOfMonth, endOfMonth),
-                    getMonthlySpending(5),
-                    getTopCategories(3, startOfMonth, endOfMonth),
-                    getTotalSpending(startOfMonth, endOfMonth),
-                    getTotalSpending(startOfPrevMonth, endOfPrevMonth),
-                    getMemberFinancialSummary(startOfMonth, endOfMonth),
+                // 데이터 가져오기 (7개 분산 쿼리 -> 3개 통합 쿼리로 최적화)
+                const [statsData, prevMonthSummary, monthlyPattern] = await Promise.all([
+                    getStatsDashboardData(startOfMonth, endOfMonth),
+                    getDashboardSummary(startOfPrevMonth, endOfPrevMonth),
+                    getOptimizedMonthlySpending(5),
                 ])
 
-                setCategoryData(categories)
-                setMemberSpending(members)
-                setMonthlyData(monthly)
-                setTopCategories(top)
-                setTotalSpending(total)
-                setPreviousMonthSpending(prevTotal)
-                setMemberFinancials(memberFinancialsData)
+                setCategoryData(statsData.categoryData)
+                setMemberSpending(statsData.memberSpending)
+                setTopCategories(statsData.topCategories)
+                setTotalSpending(statsData.totalSpending)
+                setMemberFinancials(statsData.memberFinancials)
+                setPreviousMonthSpending(prevMonthSummary.expense)
+                setMonthlyData(monthlyPattern)
             } catch (error) {
                 console.error('Error fetching stats data:', error)
             } finally {
