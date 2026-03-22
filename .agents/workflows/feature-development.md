@@ -36,23 +36,47 @@ git checkout -b "feature/#{이슈번호}-{기능명-kebab-case}"
 - 관련 컴포넌트/파일 확인
 - 타입 정의 확인 (TypeScript)
 
-## 4. 변경사항 커밋
+## 4. 검증 (커밋 전 필수)
+
+코드 구현 후 아래 검증을 **모두 통과**해야 다음 단계로 진행한다.
+
+### 4-1. 빌드 검증
+```powershell
+yarn build
+```
+- 빌드 에러 0개 확인
+
+### 4-2. 린트 검증
+```powershell
+yarn lint
+```
+- ESLint 에러 0개 확인
+
+### 4-3. 브라우저 동작 확인 (UI 변경이 있는 경우)
+- 개발 서버에서 변경된 화면 정상 렌더링 확인
+- 콘솔 에러 없는지 확인
+
+### 4-4. 검증 실패 시
+- 에러를 수정하고 4-1부터 다시 실행
+- **모든 검증 통과 전까지 커밋 금지**
+
+## 5. 변경사항 커밋
 
 ```powershell
 git add .
 git commit -m "feat: {기능 설명} (closes #{이슈번호})"
 ```
 
-## 5. 원격 브랜치 푸시
+## 6. 원격 브랜치 푸시
 
 ```powershell
 git push origin "feature/#{이슈번호}-{기능명-kebab-case}"
 ```
 
-## 6. Pull Request 생성
+## 7. Pull Request 생성
 
 ```powershell
-gh pr create --title "feat: {기능 제목}" --body "## 변경 사항\n\n{변경 내용 상세 설명}\n\n## 관련 이슈\n\nCloses #{이슈번호}" --base master
+gh pr create --title "feat: {기능 제목}" --body "## 변경 사항\n\n{변경 내용 상세 설명}\n\n## 검증 결과\n\n- [x] yarn build 통과\n- [x] yarn lint 통과\n- [x] 브라우저 동작 확인\n\n## 관련 이슈\n\nCloses #{이슈번호}" --base master
 ```
 
 PR 생성 후 AI 리뷰 워크플로우가 자동으로 실행된다.
