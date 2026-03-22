@@ -4,6 +4,11 @@ on:
   pull_request:
     types: [opened, synchronize]
 
+# 같은 PR에 빠른 연속 push 시 이전 리뷰 취소
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   review:
     runs-on: ubuntu-latest
@@ -20,21 +25,118 @@ jobs:
       - name: Get PR Diff
         id: get_diff
         run: |
-          # main 브랜치와 현재 PR 브랜치 사이의 차이점 추출
-          git diff origin/${{ github.base_ref }} HEAD > pr_diff.txt
+          # 리뷰 불필요한 파일 제외 (lock파일, 이미지 등)
+          git diff origin/${{ github.base_ref }} HEAD \
+            -- . ':!yarn.lock' ':!package-lock.json' ':!pnpm-lock.yaml' \
+            ':!*.svg' ':!*.png' ':!*.jpg' ':!*.ico' ':!*.webp' \
+            > pr_diff.txt
+
+          # 빈 diff 체크
+          if [ ! -s pr_diff.txt ]; then
+            echo "변경사항이 없습니다. 리뷰를 건너뜁니다."
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "skip=false" >> $GITHUB_OUTPUT
 
       - name: Gemini AI Review
-        uses: google-gemini/gemini-github-action@v1
-        with:
-          api-key: ${{ secrets.GEMINI_API_KEY }}
-          model: 'gemini-1.5-flash'
-          system-instruction: |
-            당신은 유능한 시니어 프론트엔드 개발자입니다. 
-            React, Next.js, TypeScript, Supabase를 사용하는 프로젝트의 코드 리뷰를 담당합니다.
-            전달받은 git diff 내용을 바탕으로 다음 사항을 중점적으로 리뷰하세요:
-            1. 성능 최적화: N+1 쿼리, 중복 API 호출, 불필요한 리렌더링 여부
-            2. 타입 안정성: TypeScript 타입 정의가 적절한지 확인
-            3. 가독성: 변수명, 함수 구조 등 유지보수가 용이한지 확인
-            4. 보안: API 키나 비밀번호가 코드에 노출되지 않았는지 확인
-            리뷰 의견은 한국어로 작성하며, 구체적인 코드 수정 제안이 있다면 포함해주세요.
-          file-path: ./pr_diff.txt
+        if: steps.get_diff.outputs.skip != 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # 1. Diff 내용 가져오기 (토큰 제한 방지를 위해 50,000자 제한)
+          DIFF_CONTENT=$(cat pr_diff.txt | head -c 50000)
+
+          # 2. 프롬프트 구성 (프로젝트 컨텍스트 + 구조화된 리뷰 기준)
+          PROMPT=$(cat <<'PROMPT_END'
+          당신은 유능한 시니어 프론트엔드 개발자입니다.
+          이 프로젝트는 Next.js + TypeScript + Supabase 기반의 공동 가계부 앱입니다.
+
+          아래의 코드 변경사항(diff)을 리뷰해주세요.
+
+          ## 리뷰 기준
+          1. **버그 가능성**: 런타임 에러, null/undefined 처리, 타입 안전성
+          2. **성능**: 불필요한 리렌더링, N+1 쿼리, 중복 API 호출
+          3. **보안**: XSS, SQL 인젝션, RLS 우회 가능성, API 키 노출
+          4. **가독성**: 네이밍, 코드 구조, 중복 코드
+
+          ## 응답 형식
+          - 심각도를 🔴(심각), 🟡(주의), 🟢(제안)으로 표시
+          - 각 이슈에 구체적인 파일명과 라인 번호를 명시
+          - 수정 제안이 있다면 코드 예시 포함
+          - 이슈가 없다면 "변경사항에 특별한 문제가 없습니다 ✅" 라고 답변
+          PROMPT_END
+          )
+
+          # PR 정보 + Diff를 최종 프롬프트에 추가
+          FULL_PROMPT="${PROMPT}
+
+          ## PR 정보
+          - 제목: ${PR_TITLE}
+          - 설명: ${PR_BODY:-설명 없음}
+
+          ## 코드 변경사항 (diff)
+          ${DIFF_CONTENT}"
+
+          # 3. JSON 페이로드 생성 (jq로 안전한 이스케이핑)
+          jq -n --arg prompt "$FULL_PROMPT" \
+            '{contents: [{parts: [{text: $prompt}]}]}' > payload.json
+
+          # 4. Gemini API 호출 (API 키를 헤더로 전달하여 보안 강화)
+          HTTP_STATUS=$(curl -s -w "%{http_code}" -X POST \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent" \
+            -H "Content-Type: application/json" \
+            -H "x-goog-api-key: ${GEMINI_API_KEY}" \
+            -d @payload.json \
+            -o response.json)
+
+          # 5. HTTP 상태 코드 검증
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "::error::Gemini API 호출 실패 (HTTP ${HTTP_STATUS})"
+            cat response.json
+            exit 1
+          fi
+
+          # 6. 응답에서 텍스트 추출 및 검증
+          if ! jq -e '.candidates[0].content.parts[0].text' response.json > /dev/null 2>&1; then
+            echo "::error::Gemini API 응답이 올바르지 않습니다."
+            cat response.json
+            exit 1
+          fi
+
+          jq -r '.candidates[0].content.parts[0].text' response.json > review_comment.md
+
+      - name: Post Comment
+        if: steps.get_diff.outputs.skip != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 이전 AI 리뷰 댓글 삭제 (중복 방지)
+          PREVIOUS_COMMENTS=$(gh api \
+            repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments \
+            --jq '.[] | select(.body | startswith("## 🤖 Gemini AI Code Review")) | .id')
+
+          for comment_id in $PREVIOUS_COMMENTS; do
+            gh api -X DELETE repos/${{ github.repository }}/issues/comments/$comment_id
+          done
+
+          # 리뷰 댓글 작성 (헤더 + 본문 + 푸터)
+          if [ -s review_comment.md ]; then
+            {
+              echo "## 🤖 Gemini AI Code Review"
+              echo ""
+              echo "> 이 리뷰는 AI에 의해 자동 생성되었습니다. 참고용으로만 활용해주세요."
+              echo ""
+              cat review_comment.md
+              echo ""
+              echo "---"
+              echo "_Powered by Gemini 2.0 Flash | 새 커밋을 push하면 자동으로 재리뷰됩니다._"
+            } > final_comment.md
+
+            gh pr comment ${{ github.event.pull_request.number }} --body-file final_comment.md
+          else
+            echo "::warning::리뷰 내용을 생성하지 못했습니다."
+          fi
