@@ -25,7 +25,7 @@ export function NumberKeypad({ onKeyPress, onSave, isValid, className, onDelete,
                         key={index}
                         type="button"
                         onClick={() => onKeyPress(key)}
-                        className={`h-16 rounded-2xl text-xl font-semibold transition-all duration-150 active:scale-95 ${key === "delete"
+                        className={`h-16 rounded-2xl text-xl font-semibold transition-all duration-150 active:scale-95 touch-manipulation select-none ${key === "delete"
                             ? "bg-gray-200 text-gray-600 active:bg-gray-300"
                             : "bg-gray-100 text-gray-900 active:bg-gray-200"
                             }`}
@@ -62,7 +62,7 @@ export function NumberKeypad({ onKeyPress, onSave, isValid, className, onDelete,
                     <button
                         type="button"
                         onClick={onDelete}
-                        className="flex-[3] py-4 rounded-2xl text-base font-semibold text-red-600 bg-red-50 active:bg-red-100 transition-all duration-200 active:scale-[0.98]"
+                        className="flex-[3] py-4 rounded-2xl text-base font-semibold text-red-600 bg-red-50 active:bg-red-100 transition-all duration-200 active:scale-[0.98] touch-manipulation select-none"
                     >
                         삭제
                     </button>
@@ -72,7 +72,7 @@ export function NumberKeypad({ onKeyPress, onSave, isValid, className, onDelete,
                         type="button"
                         onClick={onSave}
                         disabled={!isValid}
-                        className={`flex-[7] py-4 rounded-2xl text-lg font-semibold transition-all duration-200 active:scale-[0.98] ${isValid
+                        className={`flex-[7] py-4 rounded-2xl text-lg font-semibold transition-all duration-200 active:scale-[0.98] touch-manipulation select-none ${isValid
                             ? "bg-[#0047AB] text-white shadow-lg shadow-[#0047AB]/30"
                             : "bg-gray-200 text-gray-400 cursor-not-allowed"
                             }`}
@@ -85,7 +85,7 @@ export function NumberKeypad({ onKeyPress, onSave, isValid, className, onDelete,
                     type="button"
                     onClick={onSave}
                     disabled={!isValid}
-                    className={`w-full py-4 rounded-2xl text-lg font-semibold transition-all duration-200 active:scale-[0.98] ${isValid
+                    className={`w-full py-4 rounded-2xl text-lg font-semibold transition-all duration-200 active:scale-[0.98] touch-manipulation select-none ${isValid
                         ? "bg-[#0047AB] text-white shadow-lg shadow-[#0047AB]/30"
                         : "bg-gray-200 text-gray-400 cursor-not-allowed"
                         }`}
