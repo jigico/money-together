@@ -58,9 +58,9 @@ export async function middleware(request: NextRequest) {
 
     console.log('[Middleware] Path:', request.nextUrl.pathname, 'User:', user?.id)
 
-    // 공개 경로
-    const publicPaths = ['/login']
-    const isPublicPath = publicPaths.some(path => request.nextUrl.pathname.startsWith(path))
+    // 공개 경로 (랜딩 페이지 포함)
+    const publicPaths = ['/login', '/']
+    const isPublicPath = publicPaths.some(path => request.nextUrl.pathname === path || request.nextUrl.pathname.startsWith(path) && path !== '/')
 
     // 미인증 사용자 처리
     if (!user && !isPublicPath) {
@@ -85,8 +85,8 @@ export async function middleware(request: NextRequest) {
         const hasGroup = !!memberData
 
         if (hasGroup) {
-            console.log('[Middleware] Logged in user has group, redirect to /')
-            return NextResponse.redirect(new URL('/', request.url))
+            console.log('[Middleware] Logged in user has group, redirect to /dashboard')
+            return NextResponse.redirect(new URL('/dashboard', request.url))
         } else {
             // 로그인 페이지에 redirect 파라미터가 있으면 (QR 코드 등) onboarding에 전달
             const redirectParam = request.nextUrl.searchParams.get('redirect')
@@ -118,10 +118,10 @@ export async function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL('/onboarding', request.url))
         }
 
-        // 그룹이 있는 사용자가 온보딩 페이지 접근 시
-        if (hasGroup && request.nextUrl.pathname === '/onboarding') {
-            console.log('[Middleware] Has group, redirect to /')
-            return NextResponse.redirect(new URL('/', request.url))
+        // 그룹이 있는 사용자가 온보딩/랜딩 페이지 접근 시 대시보드로 리다이렉트
+        if (hasGroup && (request.nextUrl.pathname === '/onboarding' || request.nextUrl.pathname === '/')) {
+            console.log('[Middleware] Has group, redirect to /dashboard')
+            return NextResponse.redirect(new URL('/dashboard', request.url))
         }
     }
 

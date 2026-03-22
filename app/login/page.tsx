@@ -85,7 +85,7 @@ function LoginContent() {
 
                 // 로그인 성공 → replace로 이동 (히스토리에 로그인 페이지를 남기지 않음)
                 const dest = getSuccessRedirect()
-                window.location.replace(dest || '/')
+                window.location.replace(dest || '/dashboard')
             }
         } catch (err) {
             setError('오류가 발생했습니다. 다시 시도해주세요.')
