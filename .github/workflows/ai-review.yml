@@ -47,8 +47,8 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          # 1. Diff 내용 가져오기 (토큰 제한 방지를 위해 30,000자 제한)
-          DIFF_CONTENT=$(cat pr_diff.txt | head -c 30000)
+          # 1. Diff 내용 가져오기 (토큰 초과 방지를 위해 15,000자 제한)
+          DIFF_CONTENT=$(cat pr_diff.txt | head -c 15000)
 
           # 2. 프롬프트 구성
           PROMPT=$(cat <<'PROMPT_END'
@@ -106,10 +106,21 @@ jobs:
               fi
             fi
 
-            echo "API 호출 실패 (HTTP $HTTP_STATUS). 10초 후 재시도합니다..."
+            # 에러 JSON에서 retryDelay 값 추출 (예: "42s", "11s" -> 숫자만 추출)
+            RETRY_DELAY=$(jq -r '.error.details[]? | select(.["@type"] == "type.googleapis.com/google.rpc.RetryInfo") | .retryDelay' response.json | tr -d 's')
+            
+            if [ -n "$RETRY_DELAY" ] && [ "$RETRY_DELAY" != "null" ]; then
+              # 소수점이 있을 경우 올림 처리하여 여유있게 대기 (+2초 버퍼)
+              DELAY_SEC=$(echo "$RETRY_DELAY" | awk '{print int($1 + 2)}')
+              echo "API Rate Limit 경고! API 요구에 따라 ${DELAY_SEC}초 동안 대기합니다..."
+              sleep $DELAY_SEC
+            else
+              echo "API 호출 실패 (HTTP $HTTP_STATUS). 기본 15초 후 재시도합니다..."
+              sleep 15
+            fi
+            
             cat response.json
             RETRY_COUNT=$((RETRY_COUNT + 1))
-            sleep 10
           done
 
           if [ "$SUCCESS" = false ]; then
