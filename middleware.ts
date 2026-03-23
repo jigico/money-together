@@ -55,40 +55,45 @@ export async function middleware(request: NextRequest) {
     )
 
     const { data: { user } } = await supabase.auth.getUser()
+    const path = request.nextUrl.pathname
 
-    console.log('[Middleware] Path:', request.nextUrl.pathname, 'User:', user?.id)
+    console.log('[Middleware] Path:', path, 'User:', user?.id)
 
-    // 공개 경로 (랜딩 페이지 포함)
     const publicPaths = ['/login', '/']
-    const isPublicPath = publicPaths.some(path => request.nextUrl.pathname === path || request.nextUrl.pathname.startsWith(path) && path !== '/')
+    const isPublicPath = publicPaths.some(p => path === p || (path.startsWith(p) && p !== '/'))
 
-    // 미인증 사용자 처리
-    if (!user && !isPublicPath) {
-        console.log('[Middleware] No user, redirect to /login')
-        const loginUrl = new URL('/login', request.url)
-        // 원래 접근하려던 URL을 redirect 파라미터로 보존 (code 파라미터 포함)
-        const originalPath = request.nextUrl.pathname + request.nextUrl.search
-        if (originalPath !== '/') {
-            loginUrl.searchParams.set('redirect', originalPath)
+    // 1. 미인증 사용자 처리
+    if (!user) {
+        if (!isPublicPath) {
+            console.log('[Middleware] No user, redirect to /login')
+            const loginUrl = new URL('/login', request.url)
+            const originalPath = path + request.nextUrl.search
+            if (path !== '/') {
+                loginUrl.searchParams.set('redirect', originalPath)
+            }
+            return NextResponse.redirect(loginUrl)
         }
-        return NextResponse.redirect(loginUrl)
+        return response
     }
 
-    // 인증된 사용자가 로그인 페이지 접근 시
-    if (user && request.nextUrl.pathname === '/login') {
-        const { data: memberData } = await supabase
-            .from('members')
-            .select('id, group_id')
-            .eq('user_id', user.id)
-            .maybeSingle()
+    // 2. 인증된 사용자 - 그룹 확인
+    const { data: memberData } = await supabase
+        .from('members')
+        .select('id, group_id')
+        .eq('user_id', user.id)
+        .maybeSingle()
 
-        const hasGroup = !!memberData
+    const hasGroup = !!memberData
 
-        if (hasGroup) {
-            console.log('[Middleware] Logged in user has group, redirect to /dashboard')
+    if (hasGroup) {
+        // 그룹이 있는 경우, 로그인/온보딩/루트 접근 시 대시보드로 이동
+        if (path === '/' || path === '/login' || path === '/onboarding') {
+            console.log('[Middleware] Logged in & has group, redirect to /dashboard')
             return NextResponse.redirect(new URL('/dashboard', request.url))
-        } else {
-            // 로그인 페이지에 redirect 파라미터가 있으면 (QR 코드 등) onboarding에 전달
+        }
+    } else {
+        // 그룹이 없는 사용자 (온보딩 필요)
+        if (path === '/login') {
             const redirectParam = request.nextUrl.searchParams.get('redirect')
             const onboardingUrl = new URL('/onboarding', request.url)
             if (redirectParam) {
@@ -96,32 +101,14 @@ export async function middleware(request: NextRequest) {
                 const code = redirectUrl.searchParams.get('code')
                 if (code) onboardingUrl.searchParams.set('code', code)
             }
-            console.log('[Middleware] Logged in user no group, redirect to /onboarding')
+            console.log('[Middleware] Logged in but no group, redirect to /onboarding')
             return NextResponse.redirect(onboardingUrl)
         }
-    }
-
-    // 인증된 사용자 - 그룹 확인
-    if (user && !isPublicPath) {
-        const { data: memberData } = await supabase
-            .from('members')
-            .select('id, group_id')
-            .eq('user_id', user.id)
-            .maybeSingle()
-
-        const hasGroup = !!memberData
-        console.log('[Middleware] User has group:', hasGroup, 'Path:', request.nextUrl.pathname)
-
-        // 그룹이 없는 사용자
-        if (!hasGroup && request.nextUrl.pathname !== '/onboarding') {
+        
+        // 온보딩 페이지가 아닌 곳으로 갈 경우 온보딩으로 강제 이동
+        if (path !== '/onboarding') {
             console.log('[Middleware] No group, redirect to /onboarding')
             return NextResponse.redirect(new URL('/onboarding', request.url))
-        }
-
-        // 그룹이 있는 사용자가 온보딩/랜딩 페이지 접근 시 대시보드로 리다이렉트
-        if (hasGroup && (request.nextUrl.pathname === '/onboarding' || request.nextUrl.pathname === '/')) {
-            console.log('[Middleware] Has group, redirect to /dashboard')
-            return NextResponse.redirect(new URL('/dashboard', request.url))
         }
     }
 

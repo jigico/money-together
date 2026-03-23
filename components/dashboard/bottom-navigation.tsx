@@ -18,7 +18,7 @@ export function BottomNavigation({ className }: BottomNavigationProps) {
     const pathname = usePathname()
 
     const navItems: NavItem[] = [
-        { icon: Home, label: '홈', href: '/' },
+        { icon: Home, label: '홈', href: '/dashboard' },
         { icon: TrendingUp, label: '통계', href: '/stats' },
         { icon: Receipt, label: '내역', href: '/history' },
         { icon: User, label: '마이', href: '/profile' },
