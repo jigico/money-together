@@ -1,22 +1,150 @@
-name: AI Code Review
+name: Gemini AI Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
-
-permissions:
-  contents: read
-  pull-requests: write
+    types: [opened, synchronize]
 
 jobs:
   review:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    permissions:
+      contents: read
+      pull-requests: write
 
-      - name: AI Code Review
-        uses: hideack/ai-pr-reviewer-gemini@v1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          gemini_api_key: ${{ secrets.GOOGLE_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          language: ko
+          fetch-depth: 0
+
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.base_ref }}
+
+      - name: Get PR Diff
+        id: get_diff
+        run: |
+          # 락 파일, 이미지 등 제외하고 diff 생성 (가장 안전한 방식)
+          git diff origin/${{ github.base_ref }}...HEAD \
+            -- . ':!yarn.lock' ':!package-lock.json' ':!pnpm-lock.yaml' \
+            ':!*.svg' ':!*.png' ':!*.jpg' ':!*.ico' ':!*.webp' > pr_diff.txt
+          
+          # 토큰 초과 방지: 30,000자로 제한
+          head -c 30000 pr_diff.txt > pr_diff_trimmed.txt
+          mv pr_diff_trimmed.txt pr_diff.txt
+
+          if [ ! -s pr_diff.txt ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Gemini AI Review
+        if: steps.get_diff.outputs.skip != 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          DIFF_CONTENT=$(cat pr_diff.txt)
+
+          # 작성해주신 완벽한 시스템 프롬프트
+          PROMPT=$(cat <<'PROMPT_END'
+          # Role
+          React + TypeScript 프로젝트의 시니어 코드 리뷰어.
+          전달받은 git diff를 분석하여 실질적이고 액션 가능한 피드백만 제공한다.
+
+          # Review Criteria (우선순위 순)
+          ## 1. 버그 및 런타임 에러
+          - null/undefined 접근 가능성 (optional chaining 누락 등)
+          - 잘못된 조건문, off-by-one, 비동기 race condition
+          - useEffect 의존성 배열 누락 또는 과잉
+          - 이벤트 핸들러/구독의 cleanup 누락
+
+          ## 2. 보안
+          - 하드코딩된 시크릿, API 키, 토큰
+          - XSS 취약점 (dangerouslySetInnerHTML, 미검증 사용자 입력 렌더링)
+          - 민감 정보의 console.log 노출
+
+          ## 3. 성능
+          - 불필요한 리렌더링 유발 (인라인 객체/배열/함수를 prop으로 전달)
+          - useMemo/useCallback이 필요한 고비용 연산 또는 참조 안정성 문제
+          - 반복문 내 API 호출, N+1 패턴
+          - 번들 크기에 영향을 주는 불필요한 import
+
+          ## 4. 설계 및 유지보수성
+          - 하나의 컴포넌트/함수가 너무 많은 책임을 지는 경우
+          - 매직 넘버, 하드코딩된 문자열 (상수 추출 필요)
+          - 중복 로직 (기존 유틸/훅으로 대체 가능한 코드)
+          - 네이밍이 의도를 드러내지 못하는 경우
+
+          ## 5. TypeScript
+          - any 타입 사용
+          - 타입 단언(as) 남용 — 타입 가드나 제네릭으로 대체 가능한 경우
+          - 함수 반환 타입이 명시적이어야 하는데 누락된 경우
+
+          # Output Format
+          아래 형식을 반드시 지켜서 응답한다:
+
+          ### 🚨 Critical (즉시 수정 필요)
+          해당 사항이 있을 때만 작성. 버그, 보안 이슈.
+          - **파일명:라인** — 문제 설명 → 수정 제안 (코드 블록)
+
+          ### ⚠️ Warning (수정 권장)
+          성능, 설계 문제.
+          - **파일명:라인** — 문제 설명 → 수정 제안
+
+          ### 💡 Suggestion (개선하면 좋음)
+          가독성, 컨벤션, 사소한 개선.
+          - **파일명:라인** — 제안 내용
+
+          ### ✅ Good
+          잘 작성된 부분 1~2가지를 짧게 언급하여 긍정 피드백도 제공한다.
+
+          # Rules
+          - 한국어로 작성한다.
+          - 해당 사항이 없는 섹션은 생략한다.
+          - 단순 스타일은 지적하지 않는다.
+          - 추측이 아닌, diff에서 확인 가능한 문제만 지적한다.
+          - 수정 제안 시 반드시 구체적인 코드 예시를 포함한다.
+          - 총 피드백은 10개 이내로 제한하여 핵심에 집중한다.
+          PROMPT_END
+          )
+
+          # 프롬프트와 Diff 결합
+          FULL_PROMPT="${PROMPT}\n\n## 코드 변경사항 (diff)\n${DIFF_CONTENT}"
+
+          # 안전한 JSON 생성
+          jq -n --arg prompt "$FULL_PROMPT" '{contents: [{parts: [{text: $prompt}]}]}' > payload.json
+
+          # API 호출 (429 에러 방지용 재시도 로직 포함)
+          for i in {1..2}; do
+            HTTP_STATUS=$(curl -s -w "%{http_code}" -X POST \
+              "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent" \
+              -H "Content-Type: application/json" \
+              -H "x-goog-api-key: ${GEMINI_API_KEY}" \
+              -d @payload.json \
+              -o response.json)
+
+            if [ "$HTTP_STATUS" -eq 200 ]; then
+              jq -r '.candidates[0].content.parts[0].text' response.json > review_comment.md
+              break
+            elif [ "$HTTP_STATUS" -eq 429 ]; then
+              echo "Rate limit. Waiting 20s..."
+              sleep 20
+            else
+              cat response.json
+              exit 1
+            fi
+          done
+
+      - name: Post Review Comment
+        if: steps.get_diff.outputs.skip != 'true' && success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -s review_comment.md ]; then
+            {
+              echo "## 🤖 Gemini AI Code Review"
+              echo ""
+              cat review_comment.md
+            } > final_comment.md
+            gh pr comment ${{ github.event.pull_request.number }} --body-file final_comment.md
+          fi
