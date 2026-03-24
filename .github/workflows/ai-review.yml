@@ -23,7 +23,7 @@ jobs:
       - name: Get PR Diff
         id: get_diff
         run: |
-          # 락 파일, 이미지 등 제외하고 diff 생성 (가장 안전한 방식)
+          # 락 파일, 이미지 등 제외하고 diff 생성
           git diff origin/${{ github.base_ref }}...HEAD \
             -- . ':!yarn.lock' ':!package-lock.json' ':!pnpm-lock.yaml' \
             ':!*.svg' ':!*.png' ':!*.jpg' ':!*.ico' ':!*.webp' > pr_diff.txt
@@ -45,7 +45,6 @@ jobs:
         run: |
           DIFF_CONTENT=$(cat pr_diff.txt)
 
-          # 작성해주신 완벽한 시스템 프롬프트
           PROMPT=$(cat <<'PROMPT_END'
           # Role
           React + TypeScript 프로젝트의 시니어 코드 리뷰어.
@@ -108,18 +107,14 @@ jobs:
           PROMPT_END
           )
 
-          # 프롬프트와 Diff 결합
           FULL_PROMPT="${PROMPT}\n\n## 코드 변경사항 (diff)\n${DIFF_CONTENT}"
 
-          # 안전한 JSON 생성
           jq -n --arg prompt "$FULL_PROMPT" '{contents: [{parts: [{text: $prompt}]}]}' > payload.json
 
-          # API 호출 (429 에러 방지용 재시도 로직 포함)
           for i in {1..2}; do
             HTTP_STATUS=$(curl -s -w "%{http_code}" -X POST \
-              "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent" \
+              "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
               -H "Content-Type: application/json" \
-              -H "x-goog-api-key: ${GEMINI_API_KEY}" \
               -d @payload.json \
               -o response.json)
 
@@ -130,6 +125,7 @@ jobs:
               echo "Rate limit. Waiting 20s..."
               sleep 20
             else
+              echo "Error: HTTP $HTTP_STATUS"
               cat response.json
               exit 1
             fi
