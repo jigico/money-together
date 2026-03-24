@@ -142,5 +142,5 @@ jobs:
               echo ""
               cat review_comment.md
             } > final_comment.md
-            gh pr comment ${{ github.event.pull_request.number }} --body-file final_comment.md
+            gh pr comment ${{ github.event.pull_request.number }} -R ${{ github.repository }} --body-file final_comment.md
           fi
