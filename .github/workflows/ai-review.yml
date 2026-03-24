@@ -7,9 +7,11 @@ on:
 jobs:
   review:
     runs-on: ubuntu-latest
+    # 🚨 여기에 issues: write 권한이 반드시 필요합니다!
     permissions:
       contents: read
       pull-requests: write
+      issues: write 
 
     steps:
       - name: Checkout code
@@ -23,12 +25,10 @@ jobs:
       - name: Get PR Diff
         id: get_diff
         run: |
-          # 락 파일, 이미지 등 제외하고 diff 생성
           git diff origin/${{ github.base_ref }}...HEAD \
             -- . ':!yarn.lock' ':!package-lock.json' ':!pnpm-lock.yaml' \
             ':!*.svg' ':!*.png' ':!*.jpg' ':!*.ico' ':!*.webp' > pr_diff.txt
           
-          # 토큰 초과 방지: 30,000자로 제한
           head -c 30000 pr_diff.txt > pr_diff_trimmed.txt
           mv pr_diff_trimmed.txt pr_diff.txt
 
@@ -134,6 +134,7 @@ jobs:
       - name: Post Review Comment
         if: steps.get_diff.outputs.skip != 'true' && success()
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # 👈 gh 명령어는 GH_TOKEN을 더 명확하게 인식합니다.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -s review_comment.md ]; then
@@ -142,5 +143,7 @@ jobs:
               echo ""
               cat review_comment.md
             } > final_comment.md
+            
+            # 레포지토리를 명시적으로 지정하여 에러 완벽 차단
             gh pr comment ${{ github.event.pull_request.number }} -R ${{ github.repository }} --body-file final_comment.md
           fi
