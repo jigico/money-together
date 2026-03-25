@@ -7,11 +7,9 @@ on:
 jobs:
   review:
     runs-on: ubuntu-latest
-    # 🚨 여기에 issues: write 권한이 반드시 필요합니다!
     permissions:
       contents: read
       pull-requests: write
-      issues: write 
 
     steps:
       - name: Checkout code
@@ -28,11 +26,14 @@ jobs:
           git diff origin/${{ github.base_ref }}...HEAD \
             -- . ':!yarn.lock' ':!package-lock.json' ':!pnpm-lock.yaml' \
             ':!*.svg' ':!*.png' ':!*.jpg' ':!*.ico' ':!*.webp' > pr_diff.txt
-          
+
           head -c 30000 pr_diff.txt > pr_diff_trimmed.txt
           mv pr_diff_trimmed.txt pr_diff.txt
 
-          if [ ! -s pr_diff.txt ]; then
+          DIFF_SIZE=$(wc -c < pr_diff.txt)
+          echo "diff_size=${DIFF_SIZE}" >> $GITHUB_OUTPUT
+
+          if [ "$DIFF_SIZE" -eq 0 ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
           else
             echo "skip=false" >> $GITHUB_OUTPUT
@@ -43,9 +44,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          DIFF_CONTENT=$(cat pr_diff.txt)
-
-          PROMPT=$(cat <<'PROMPT_END'
+          cat <<'PROMPT_END' > system_prompt.txt
           # Role
           React + TypeScript 프로젝트의 시니어 코드 리뷰어.
           전달받은 git diff를 분석하여 실질적이고 액션 가능한 피드백만 제공한다.
@@ -105,52 +104,90 @@ jobs:
           - 수정 제안 시 반드시 구체적인 코드 예시를 포함한다.
           - 총 피드백은 10개 이내로 제한하여 핵심에 집중한다.
           PROMPT_END
-          )
 
-          FULL_PROMPT="${PROMPT}\n\n## 코드 변경사항 (diff)\n${DIFF_CONTENT}"
+          # diff 내용과 프롬프트를 jq로 안전하게 JSON 결합
+          SYSTEM=$(cat system_prompt.txt)
+          DIFF=$(cat pr_diff.txt)
+          jq -n \
+            --arg system "$SYSTEM" \
+            --arg diff "$DIFF" \
+            '{
+              system_instruction: {parts: [{text: $system}]},
+              contents: [{parts: [{text: ("## 코드 변경사항 (diff)\n" + $diff)}]}]
+            }' > payload.json
 
-          jq -n --arg prompt "$FULL_PROMPT" '{contents: [{parts: [{text: $prompt}]}]}' > payload.json
+          echo "=== Payload size: $(wc -c < payload.json) bytes ==="
 
-          for i in {1..2}; do
+          # API 호출 (재시도 포함)
+          SUCCESS=false
+          for i in 1 2 3; do
+            echo "=== Attempt $i ==="
             HTTP_STATUS=$(curl -s -w "%{http_code}" -X POST \
               "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
               -H "Content-Type: application/json" \
               -d @payload.json \
               -o response.json)
 
+            echo "HTTP Status: $HTTP_STATUS"
+
             if [ "$HTTP_STATUS" -eq 200 ]; then
-              jq -r '.candidates[0].content.parts[0].text' response.json > review_comment.md
-              break
+              # 응답 구조 확인
+              echo "=== Response structure ==="
+              jq 'keys' response.json
+              jq '.candidates[0].content.parts[0].text | length' response.json
+
+              REVIEW=$(jq -r '.candidates[0].content.parts[0].text // empty' response.json)
+              if [ -n "$REVIEW" ]; then
+                echo "$REVIEW" > review_comment.md
+                echo "=== Review file created: $(wc -c < review_comment.md) bytes ==="
+                SUCCESS=true
+                break
+              else
+                echo "=== ERROR: Response 200 but no text content ==="
+                jq '.' response.json
+              fi
             elif [ "$HTTP_STATUS" -eq 429 ]; then
-              echo "Rate limit. Waiting 20s..."
-              sleep 20
+              echo "Rate limited. Waiting 30s..."
+              sleep 30
             else
-              echo "Error: HTTP $HTTP_STATUS"
+              echo "=== ERROR: HTTP $HTTP_STATUS ==="
               cat response.json
-              exit 1
             fi
           done
+
+          if [ "$SUCCESS" != "true" ]; then
+            echo "::error::Gemini API 호출 실패. review_comment.md 미생성."
+            exit 1
+          fi
 
       - name: Post Review Comment
         if: steps.get_diff.outputs.skip != 'true' && success()
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
+            const path = require('path');
+            const filePath = path.join(process.env.GITHUB_WORKSPACE, 'review_comment.md');
             
-            // 1. Gemini가 만든 리뷰 파일(review_comment.md) 안전하게 읽어오기
-            if (fs.existsSync('review_comment.md')) {
-              const review = fs.readFileSync('review_comment.md', 'utf8');
-              const finalComment = `## 🤖 Gemini AI Code Review\n\n${review}`;
-              
-              // 2. PR에 댓글 생성 (Issue API 사용)
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: finalComment
-              });
-            } else {
-              console.log("리뷰 파일이 생성되지 않았습니다.");
+            console.log(`Looking for: ${filePath}`);
+            console.log(`File exists: ${fs.existsSync(filePath)}`);
+            
+            if (!fs.existsSync(filePath)) {
+              core.setFailed('review_comment.md not found');
+              return;
             }
+            
+            const review = fs.readFileSync(filePath, 'utf8').trim();
+            if (!review) {
+              core.setFailed('review_comment.md is empty');
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: `## 🤖 Gemini AI Code Review\n\n${review}`
+            });
+            
+            console.log('Review comment posted successfully');
