@@ -19,23 +19,39 @@ CREATE TABLE IF NOT EXISTS members (
 );
 
 -- 3. Categories 테이블 (지출 카테고리) - 전체 공통 사용
+-- is_system: true = 시스템 카테고리(미분류 등), 선택 UI에 노출 안 함
 CREATE TABLE IF NOT EXISTS categories (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,
   icon TEXT NOT NULL,
   color TEXT NOT NULL,
+  is_system BOOLEAN DEFAULT false NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- 4. Transactions 테이블 (거래 내역) - group_id 추가
+-- category_id: ON DELETE SET DEFAULT → 카테고리 삭제 시 '미분류'로 자동 이관
+-- (마이그레이션 실행 후 ON DELETE CASCADE → SET DEFAULT로 FK가 변경됨)
 CREATE TABLE IF NOT EXISTS transactions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
   amount INTEGER NOT NULL,
-  category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  category_id UUID NOT NULL REFERENCES categories(id) ON DELETE SET DEFAULT,
   member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
   description TEXT NOT NULL,
   date DATE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 5. Frequent Transactions 테이블 (자주 쓰는 내역 템플릿)
+CREATE TABLE IF NOT EXISTS frequent_transactions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  transaction_type TEXT NOT NULL,
+  category_id UUID NOT NULL REFERENCES categories(id) ON DELETE SET DEFAULT,
+  description TEXT NOT NULL,
+  amount INTEGER NULL,
+  usage_count INTEGER DEFAULT 0 NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -46,12 +62,15 @@ CREATE INDEX IF NOT EXISTS transactions_date_idx ON transactions(date);
 CREATE INDEX IF NOT EXISTS transactions_category_id_idx ON transactions(category_id);
 CREATE INDEX IF NOT EXISTS transactions_member_id_idx ON transactions(member_id);
 CREATE INDEX IF NOT EXISTS transactions_created_at_idx ON transactions(created_at);
+CREATE INDEX IF NOT EXISTS frequent_transactions_group_id_idx ON frequent_transactions(group_id);
+CREATE INDEX IF NOT EXISTS frequent_transactions_usage_count_idx ON frequent_transactions(usage_count DESC);
 
 -- Row Level Security (RLS) 활성화
 ALTER TABLE groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE frequent_transactions ENABLE ROW LEVEL SECURITY;
 
 -- RLS 정책 (현재는 개발용으로 모두 허용, 추후 인증 추가 시 수정)
 -- Groups
@@ -71,17 +90,44 @@ CREATE POLICY "Anyone can insert transactions" ON transactions FOR INSERT WITH C
 CREATE POLICY "Anyone can update transactions" ON transactions FOR UPDATE USING (true);
 CREATE POLICY "Anyone can delete transactions" ON transactions FOR DELETE USING (true);
 
+-- Frequent Transactions
+CREATE POLICY "Anyone can read frequent_transactions" ON frequent_transactions FOR SELECT USING (true);
+CREATE POLICY "Anyone can insert frequent_transactions" ON frequent_transactions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can update frequent_transactions" ON frequent_transactions FOR UPDATE USING (true);
+CREATE POLICY "Anyone can delete frequent_transactions" ON frequent_transactions FOR DELETE USING (true);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Supabase RPC: delete_category_safe
+-- 카테고리 삭제 시 참조 내역/템플릿을 미분류로 이관 후 삭제 (원자적 실행)
+-- 사용: SELECT delete_category_safe('<category-uuid>');
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION delete_category_safe(target_id UUID)
+RETURNS void AS $$
+DECLARE
+  uncategorized_id UUID;
+BEGIN
+  SELECT id INTO uncategorized_id FROM categories WHERE is_system = true LIMIT 1;
+  IF uncategorized_id IS NULL THEN
+    RAISE EXCEPTION '미분류 카테고리를 찾을 수 없습니다.';
+  END IF;
+  UPDATE transactions SET category_id = uncategorized_id WHERE category_id = target_id;
+  UPDATE frequent_transactions SET category_id = uncategorized_id WHERE category_id = target_id;
+  DELETE FROM categories WHERE id = target_id AND is_system = false;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- 초기 데이터 삽입
 
 -- Categories 초기 데이터 (모든 그룹이 공유)
-INSERT INTO categories (name, icon, color) VALUES
-  ('식비', '🍽️', '#f87171'),
-  ('교통', '🚗', '#60a5fa'),
-  ('카페', '☕', '#fbbf24'),
-  ('생활', '🧺', '#a78bfa'),
-  ('주거', '🏠', '#34d399'),
-  ('병원', '🏥', '#ec4899'),
-  ('기타', '📦', '#9ca3af')
+INSERT INTO categories (name, icon, color, is_system) VALUES
+  ('미분류', '📂', '#9ca3af', true),
+  ('식비', '🍽️', '#f87171', false),
+  ('교통', '🚗', '#60a5fa', false),
+  ('카페', '☕', '#fbbf24', false),
+  ('생활', '🧺', '#a78bfa', false),
+  ('주거', '🏠', '#34d399', false),
+  ('병원', '🏥', '#ec4899', false),
+  ('기타', '📦', '#9ca3af', false)
 ON CONFLICT (name) DO NOTHING;
 
 -- MVP용 초기 그룹 및 멤버 생성

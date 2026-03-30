@@ -1,5 +1,5 @@
 import { supabase } from './client'
-import type { Transaction, Category, Member, TransactionUI, CategoryDataUI, MemberSpendingUI, TransactionType } from '@/types/database'
+import type { Transaction, Category, Member, TransactionUI, CategoryDataUI, MemberSpendingUI, TransactionType, FrequentTransaction } from '@/types/database'
 import { transactionToUI, memberToUI } from '@/types/database'
 import { getCurrentGroupId } from './helpers'
 
@@ -434,19 +434,53 @@ export async function getMemberFinancialSummary(
     return summaries
 }
 
-// 카테고리 목록 가져오기 (공통)
-export async function getCategories() {
+// 카테고리 목록 가져오기 (is_system=false인 항목만 - 미분류 노출 차단)
+// NOTE: DB 마이그레이션 전에는 is_system 컬럼이 없으므로 전체 조회로 폴백
+export async function getCategories(): Promise<Category[]> {
     const { data, error } = await supabase
         .from('categories')
         .select('*')
+        .eq('is_system', false)
         .order('name')
 
     if (error) {
-        console.error('Error fetching categories:', error)
+        // is_system 컬럼이 없는 경우 (마이그레이션 전) 전체 조회로 폴백
+        console.warn('getCategories fallback (is_system column may not exist yet):', error.message)
+        const { data: fallbackData, error: fallbackError } = await supabase
+            .from('categories')
+            .select('*')
+            .order('name')
+
+        if (fallbackError) {
+            console.error('Error fetching categories:', fallbackError)
+            return []
+        }
+
+        // 마이그레이션 전: is_system이 없으므로 모든 카테고리 반환
+        return (fallbackData ?? []).map((c: any) => ({ ...c, is_system: c.is_system ?? false })) as Category[]
+    }
+
+    return data as Category[]
+}
+
+// 자주 쓰는 내역 목록 가져오기 (그룹 기준, usage_count DESC 정렬, 최대 15개)
+export async function getFrequentTransactions(): Promise<FrequentTransaction[]> {
+    const groupId = await getCurrentGroupId()
+    if (!groupId) return []
+
+    const { data, error } = await supabase
+        .from('frequent_transactions')
+        .select('*')
+        .eq('group_id', groupId)
+        .order('usage_count', { ascending: false })
+        .limit(15)
+
+    if (error) {
+        console.error('Error fetching frequent transactions:', error)
         return []
     }
 
-    return data
+    return data as FrequentTransaction[]
 }
 
 // 현재 그룹의 멤버 목록 가져오기

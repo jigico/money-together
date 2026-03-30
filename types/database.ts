@@ -62,6 +62,25 @@ export interface Database {
                 Update: Partial<Omit<Category, 'id'>>
                 Relationships: []
             }
+            frequent_transactions: {
+                Row: FrequentTransaction
+                Insert: Omit<FrequentTransaction, 'id' | 'created_at' | 'usage_count'>
+                Update: Partial<Omit<FrequentTransaction, 'id' | 'created_at'>>
+                Relationships: [
+                    {
+                        foreignKeyName: "frequent_transactions_group_id_fkey"
+                        columns: ["group_id"]
+                        referencedRelation: "groups"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "frequent_transactions_category_id_fkey"
+                        columns: ["category_id"]
+                        referencedRelation: "categories"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
             members: {
                 Row: Member
                 Insert: Omit<Member, 'id'>
@@ -111,6 +130,19 @@ export interface Category {
     name: string
     icon: string
     color: string
+    is_system: boolean
+}
+
+// FrequentTransaction Type (자주 쓰는 내역 템플릿)
+export interface FrequentTransaction {
+    id: string
+    group_id: string
+    transaction_type: TransactionType
+    category_id: string
+    description: string
+    amount: number | null
+    usage_count: number
+    created_at: string
 }
 
 // Member Type

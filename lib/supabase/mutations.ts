@@ -1,6 +1,6 @@
 import { supabase } from './client'
 import { getCurrentGroupId } from './helpers'
-import type { TransactionType } from '@/types/database'
+import type { TransactionType, FrequentTransaction } from '@/types/database'
 
 // 거래 추가 (그룹 ID 자동 포함)
 export async function addTransaction(data: {
@@ -109,4 +109,116 @@ export async function updateMemberName(name: string): Promise<{ success: boolean
         console.error('Error updating member name:', error)
         return { success: false, error: '이름 변경 중 오류가 발생했습니다.' }
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 자주 쓰는 내역 (Frequent Transactions) CRUD
+// ─────────────────────────────────────────────────────────────────────────────
+
+const FREQUENT_LIMIT = 15
+
+// 자주 쓰는 내역 추가 (그룹당 최대 15개 제한)
+export async function addFrequentTransaction(data: {
+    transaction_type: TransactionType
+    category_id: string
+    description: string
+    amount?: number | null
+}): Promise<{ success: boolean; error?: string; data?: FrequentTransaction }> {
+    const groupId = await getCurrentGroupId()
+    if (!groupId) return { success: false, error: '그룹 정보를 찾을 수 없습니다.' }
+
+    // 완전 동일한 항목 중복 체크
+    let duplicateQuery = supabase
+        .from('frequent_transactions')
+        .select('id')
+        .eq('group_id', groupId)
+        .eq('transaction_type', data.transaction_type)
+        .eq('category_id', data.category_id)
+        .eq('description', data.description)
+
+    if (data.amount != null) {
+        duplicateQuery = duplicateQuery.eq('amount', data.amount)
+    } else {
+        duplicateQuery = duplicateQuery.is('amount', null)
+    }
+
+    const { data: existing } = await duplicateQuery.maybeSingle()
+    if (existing) {
+        // 완전히 동일한 항목이 이미 있으면 조용히 스킵
+        return { success: true }
+    }
+
+    // 현재 개수 확인
+    const { count } = await supabase
+        .from('frequent_transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('group_id', groupId)
+
+    if ((count ?? 0) >= FREQUENT_LIMIT) {
+        return { success: false, error: `자주 쓰는 내역은 최대 ${FREQUENT_LIMIT}개까지 저장할 수 있습니다.` }
+    }
+
+    const { data: inserted, error } = await supabase
+        .from('frequent_transactions')
+        // @ts-ignore
+        .insert([{
+            group_id: groupId,
+            transaction_type: data.transaction_type,
+            category_id: data.category_id,
+            description: data.description,
+            amount: data.amount ?? null,
+        }] as any)
+        .select()
+        .single()
+
+    if (error) {
+        console.error('Error adding frequent transaction:', error)
+        return { success: false, error: '저장에 실패했습니다.' }
+    }
+
+    return { success: true, data: inserted as FrequentTransaction }
+}
+
+// 자주 쓰는 내역 수정
+export async function updateFrequentTransaction(
+    id: string,
+    data: Partial<{
+        transaction_type: TransactionType
+        category_id: string
+        description: string
+        amount: number | null
+    }>
+): Promise<{ success: boolean; error?: string }> {
+    const { error } = await supabase
+        .from('frequent_transactions')
+        // @ts-ignore
+        .update(data as any)
+        .eq('id', id)
+
+    if (error) {
+        console.error('Error updating frequent transaction:', error)
+        return { success: false, error: '수정에 실패했습니다.' }
+    }
+
+    return { success: true }
+}
+
+// 자주 쓰는 내역 삭제
+export async function deleteFrequentTransaction(id: string): Promise<{ success: boolean; error?: string }> {
+    const { error } = await supabase
+        .from('frequent_transactions')
+        .delete()
+        .eq('id', id)
+
+    if (error) {
+        console.error('Error deleting frequent transaction:', error)
+        return { success: false, error: '삭제에 실패했습니다.' }
+    }
+
+    return { success: true }
+}
+
+// 자주 쓰는 내역 사용 횟수 +1 (칩 탭 시 호출)
+export async function incrementUsageCount(id: string): Promise<void> {
+    await (supabase as any).rpc('increment_frequent_usage', { row_id: id })
 }
