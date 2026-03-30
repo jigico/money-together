@@ -1,16 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { ChevronLeft, X, ChevronDown, Calendar } from "lucide-react"
-import { useRouter, useParams } from "next/navigation"
-import { NumberKeypad } from "@/components/entry/number-keypad"
-import { MemberSelector } from "@/components/entry/member-selector"
 import { CalendarDatePicker } from "@/components/entry/calendar-date-picker"
+import { MemberSelector } from "@/components/entry/member-selector"
+import { NumberKeypad } from "@/components/entry/number-keypad"
+import { addFrequentTransaction, deleteTransaction, updateTransaction } from "@/lib/supabase/mutations"
 import { getCategories, getMembers, getSingleTransaction } from "@/lib/supabase/queries"
-import { updateTransaction, deleteTransaction } from "@/lib/supabase/mutations"
-import type { Category, Member } from "@/types/database"
-import type { TransactionType } from "@/types/database"
-import { Utensils, Car, Coffee, ShoppingBasket, Home, Hospital, Heart, Gamepad2, Plane, MoreHorizontal, Shirt, Theater, Hotel, Gift, GraduationCap, Baby, Banknote, Briefcase, Landmark, CircleDollarSign, PiggyBank, Building2, Shield, TrendingUp, BarChart2, Building, Bitcoin } from "lucide-react"
+import type { Category, Member, TransactionType } from "@/types/database"
+import { Baby, Banknote, BarChart2, Bitcoin, Briefcase, Building, Building2, Calendar, Car, ChevronDown, ChevronLeft, CircleDollarSign, Coffee, Gamepad2, Gift, GraduationCap, Heart, Home, Hospital, Hotel, Landmark, MoreHorizontal, PiggyBank, Plane, RotateCcw, Shield, Shirt, ShoppingBasket, Theater, TrendingUp, Utensils, X } from "lucide-react"
+import { useParams, useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 
 // 카테고리 이름별 아이콘 매핑
 const iconMap: Record<string, any> = {
@@ -103,6 +101,7 @@ export default function TransactionDetailPage() {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [deleting, setDeleting] = useState(false)
+    const [saveAsTemplate, setSaveAsTemplate] = useState(false)
 
     useEffect(() => {
         async function fetchData() {
@@ -204,6 +203,19 @@ export default function TransactionDetailPage() {
                 transaction_type: transactionType,
             })
 
+            // 자주 쓰는 내역으로 저장 체크된 경우
+            if (saveAsTemplate) {
+                const result = await addFrequentTransaction({
+                    transaction_type: transactionType,
+                    category_id: selectedCategory,
+                    description: description,
+                    amount: amount ? Number(amount) : null,
+                })
+                if (!result.success && result.error) {
+                    alert(result.error)
+                }
+            }
+
             router.push('/history')
         } catch (error) {
             console.error('Error updating transaction:', error)
@@ -260,7 +272,7 @@ export default function TransactionDetailPage() {
                     }}
                     className="w-10 h-10 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-sm active:scale-95 transition-transform"
                 >
-                    <X className="w-5 h-5 text-gray-500" />
+                    <RotateCcw className="w-5 h-5 text-gray-500" />
                 </button>
             </header>
 
@@ -307,11 +319,26 @@ export default function TransactionDetailPage() {
 
             {/* Category & Date & Description */}
             <div className="px-6 pb-4 flex-shrink-0 space-y-3">
+                {/* Date Picker - Apple Style */}
+                <button
+                    type="button"
+                    onClick={() => setIsDatePickerOpen(true)}
+                    className="w-full bg-white rounded-2xl py-2 px-4 shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                            <Calendar className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <span className="font-medium text-gray-900">{formatDate(selectedDate)}</span>
+                    </div>
+                    <ChevronDown className="w-5 h-5 text-gray-500" />
+                </button>
+
                 {/* Category Button */}
                 <button
                     type="button"
                     onClick={() => setIsCategoryOpen(true)}
-                    className="w-full bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform"
+                    className="w-full bg-white rounded-2xl py-2 px-4 shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform"
                 >
                     <div className="flex items-center gap-3">
                         {selectedCategoryData ? (
@@ -336,21 +363,6 @@ export default function TransactionDetailPage() {
                     <ChevronDown className="w-5 h-5 text-gray-500" />
                 </button>
 
-                {/* Date Picker - Apple Style */}
-                <button
-                    type="button"
-                    onClick={() => setIsDatePickerOpen(true)}
-                    className="w-full bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-                            <Calendar className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <span className="font-medium text-gray-900">{formatDate(selectedDate)}</span>
-                    </div>
-                    <ChevronDown className="w-5 h-5 text-gray-500" />
-                </button>
-
                 {/* Description Input */}
                 <div className="bg-white rounded-2xl p-4 shadow-sm">
                     <input
@@ -361,6 +373,29 @@ export default function TransactionDetailPage() {
                         className="w-full bg-transparent text-gray-900 placeholder:text-gray-400 outline-none text-sm"
                     />
                 </div>
+
+                {/* 자주 쓰는 내역으로 저장 체크박스 */}
+                <label className="flex items-center gap-3 px-1 cursor-pointer group">
+                    <div
+                        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all flex-shrink-0 ${saveAsTemplate
+                                ? 'bg-[#0047AB] border-[#0047AB]'
+                                : 'border-gray-300 group-active:border-gray-400'
+                            }`}
+                        onClick={() => setSaveAsTemplate(prev => !prev)}
+                    >
+                        {saveAsTemplate && (
+                            <svg className="w-3 h-3 text-white" fill="none" strokeWidth={2.5} stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                        )}
+                    </div>
+                    <span
+                        className="text-sm text-gray-600 font-medium select-none"
+                        onClick={() => setSaveAsTemplate(prev => !prev)}
+                    >
+                        자주 쓰는 내역으로 저장
+                    </span>
+                </label>
             </div>
 
             {/* Number Keypad */}

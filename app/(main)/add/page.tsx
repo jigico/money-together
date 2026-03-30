@@ -1,18 +1,16 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { ChevronLeft, X, ChevronDown, Calendar } from "lucide-react"
+import { CalendarDatePicker } from "@/components/entry/calendar-date-picker"
+import { MemberSelector } from "@/components/entry/member-selector"
+import { NumberKeypad } from "@/components/entry/number-keypad"
+import { getCurrentUserMemberId } from "@/lib/supabase/helpers"
+import { addFrequentTransaction, addTransaction } from "@/lib/supabase/mutations"
+import { getCategories, getFrequentTransactions, getMembers } from "@/lib/supabase/queries"
+import type { Category, FrequentTransaction, Member, TransactionType } from "@/types/database"
+import { Baby, Banknote, BarChart2, Bitcoin, Briefcase, Building, Building2, Calendar, Car, ChevronDown, ChevronLeft, CircleDollarSign, Coffee, Gamepad2, Gift, GraduationCap, Heart, Home, Hospital, Hotel, Landmark, MoreHorizontal, PiggyBank, Plane, RotateCcw, Shield, Shirt, ShoppingBasket, Theater, TrendingUp, Utensils, X, Zap } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { NumberKeypad } from "@/components/entry/number-keypad"
-import { MemberSelector } from "@/components/entry/member-selector"
-import { CalendarDatePicker } from "@/components/entry/calendar-date-picker"
-import { getCategories, getMembers } from "@/lib/supabase/queries"
-import { getCurrentUserMemberId } from "@/lib/supabase/helpers"
-import { addTransaction } from "@/lib/supabase/mutations"
-import type { Category, Member } from "@/types/database"
-import type { TransactionType } from "@/types/database"
-import { Utensils, Car, Coffee, ShoppingBasket, Home, Hospital, Heart, Gamepad2, Plane, MoreHorizontal, Shirt, Theater, Hotel, Gift, GraduationCap, Baby, Banknote, Briefcase, Landmark, CircleDollarSign, PiggyBank, Building2, Shield, TrendingUp, BarChart2, Building, Bitcoin } from "lucide-react"
+import { useEffect, useState } from "react"
 
 // 카테고리 이름별 아이콘 매핑
 const iconMap: Record<string, any> = {
@@ -86,6 +84,20 @@ const colorMap: Record<string, string> = {
     '코인': 'bg-amber-100 text-amber-600',
 }
 
+const TYPE_LABEL: Record<TransactionType, string> = {
+    expense: '지출',
+    income: '수입',
+    savings: '저축',
+    investment: '투자',
+}
+
+const TYPE_COLOR: Record<TransactionType, string> = {
+    expense: 'text-red-600 bg-red-50',
+    income: 'text-green-600 bg-green-50',
+    savings: 'text-blue-600 bg-blue-50',
+    investment: 'text-purple-600 bg-purple-50',
+}
+
 export default function AddPage() {
     const router = useRouter()
     const [amount, setAmount] = useState("")
@@ -96,27 +108,33 @@ export default function AddPage() {
     const [selectedDate, setSelectedDate] = useState(new Date())
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
     const [isCategoryOpen, setIsCategoryOpen] = useState(false)
+    const [isFrequentOpen, setIsFrequentOpen] = useState(false)
     const [categories, setCategories] = useState<Category[]>([])
     const [members, setMembers] = useState<Member[]>([])
+    const [frequentTemplates, setFrequentTemplates] = useState<FrequentTransaction[]>([])
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [saveAsTemplate, setSaveAsTemplate] = useState(false)
+    const [currentUserMemberId, setCurrentUserMemberId] = useState<string | null>(null)
 
     useEffect(() => {
         async function fetchData() {
             try {
-                const [categoriesData, membersData] = await Promise.all([
+                const [categoriesData, membersData, templatesData] = await Promise.all([
                     getCategories(),
                     getMembers(),
+                    getFrequentTransactions(),
                 ])
                 setCategories(categoriesData)
                 setMembers(membersData)
+                setFrequentTemplates(templatesData)
 
                 // 로그인한 사용자를 기본 선택
-                const currentUserMemberId = await getCurrentUserMemberId()
-                if (currentUserMemberId) {
-                    setSelectedMemberId(currentUserMemberId)
+                const myMemberId = await getCurrentUserMemberId()
+                setCurrentUserMemberId(myMemberId)
+                if (myMemberId) {
+                    setSelectedMemberId(myMemberId)
                 } else if (membersData.length > 0) {
-                    // fallback: 첫 번째 멤버 선택
                     setSelectedMemberId(membersData[0].id)
                 }
             } catch (error) {
@@ -137,8 +155,22 @@ export default function AddPage() {
         investment: ['주식', '펀드', '부동산', '코인'],
     }
     const filteredCategories = categories.filter(c => TYPE_CATEGORY_NAMES[transactionType].includes(c.name))
-
     const selectedCategoryData = filteredCategories.find((c) => c.id === selectedCategory)
+
+    // 칩 탭 핸들러: 폼 자동 완성
+    const handleChipTap = (template: FrequentTransaction) => {
+        setTransactionType(template.transaction_type as TransactionType)
+        setSelectedCategory(template.category_id)
+        setDescription(template.description)
+        if (template.amount != null) {
+            setAmount(String(template.amount))
+        }
+        // 지출자는 현재 로그인 유저로 고정
+        if (currentUserMemberId) {
+            setSelectedMemberId(currentUserMemberId)
+        }
+        // usage_count 증가 로직은 추후 결정 예정 (현재 보류)
+    }
 
     const formatAmount = (value: string) => {
         if (!value) return "0"
@@ -181,6 +213,19 @@ export default function AddPage() {
                 transaction_type: transactionType,
             })
 
+            // 자주 쓰는 내역으로 저장 체크된 경우
+            if (saveAsTemplate) {
+                const result = await addFrequentTransaction({
+                    transaction_type: transactionType,
+                    category_id: selectedCategory,
+                    description: description,
+                    amount: amount ? Number(amount) : null,
+                })
+                if (!result.success && result.error) {
+                    alert(result.error)
+                }
+            }
+
             router.push('/history')
         } catch (error) {
             console.error('Error saving transaction:', error)
@@ -207,7 +252,7 @@ export default function AddPage() {
 
     return (
         <div className="min-h-screen bg-[#F5F5F7] flex flex-col max-w-md mx-auto">
-            {/* Header - 패딩 조정 */}
+            {/* Header */}
             <header className="flex items-center justify-between px-4 pt-2 pb-2">
                 <Link
                     href="/"
@@ -221,10 +266,11 @@ export default function AddPage() {
                     onClick={() => {
                         setAmount("")
                         setDescription("")
+                        setSaveAsTemplate(false)
                     }}
                     className="w-10 h-10 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-sm active:scale-95 transition-transform"
                 >
-                    <X className="w-5 h-5 text-gray-500" />
+                    <RotateCcw className="w-5 h-5 text-gray-500" />
                 </button>
             </header>
 
@@ -271,11 +317,26 @@ export default function AddPage() {
 
             {/* Category & Date & Description */}
             <div className="px-6 pb-4 flex-shrink-0 space-y-3">
+                {/* Date Picker */}
+                <button
+                    type="button"
+                    onClick={() => setIsDatePickerOpen(true)}
+                    className="w-full bg-white rounded-2xl py-2 px-4 shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                            <Calendar className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <span className="font-medium text-gray-900">{formatDate(selectedDate)}</span>
+                    </div>
+                    <ChevronDown className="w-5 h-5 text-gray-500" />
+                </button>
+
                 {/* Category Button */}
                 <button
                     type="button"
                     onClick={() => setIsCategoryOpen(true)}
-                    className="w-full bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform"
+                    className="w-full bg-white rounded-2xl py-2 px-4 shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform"
                 >
                     <div className="flex items-center gap-3">
                         {selectedCategoryData ? (
@@ -300,21 +361,6 @@ export default function AddPage() {
                     <ChevronDown className="w-5 h-5 text-gray-500" />
                 </button>
 
-                {/* Date Picker - Apple Style */}
-                <button
-                    type="button"
-                    onClick={() => setIsDatePickerOpen(true)}
-                    className="w-full bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-                            <Calendar className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <span className="font-medium text-gray-900">{formatDate(selectedDate)}</span>
-                    </div>
-                    <ChevronDown className="w-5 h-5 text-gray-500" />
-                </button>
-
                 {/* Description Input */}
                 <div className="bg-white rounded-2xl p-4 shadow-sm">
                     <input
@@ -324,6 +370,43 @@ export default function AddPage() {
                         placeholder="설명을 입력하세요"
                         className="w-full bg-transparent text-gray-900 placeholder:text-gray-400 outline-none text-sm"
                     />
+                </div>
+
+                {/* Frequent Templates Controls */}
+                <div className="flex flex-row items-center justify-between px-1">
+                    {/* 자주 쓰는 내역으로 저장 체크박스 */}
+                    <div
+                        className="flex items-center gap-3 cursor-pointer group py-1"
+                        onClick={() => setSaveAsTemplate(prev => !prev)}
+                    >
+                        <div
+                            className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all flex-shrink-0 ${saveAsTemplate
+                                ? 'bg-[#0047AB] border-[#0047AB]'
+                                : 'border-gray-300 group-active:border-gray-400'
+                                }`}
+                        >
+                            {saveAsTemplate && (
+                                <svg className="w-3 h-3 text-white" fill="none" strokeWidth={2.5} stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>
+                            )}
+                        </div>
+                        <span className="text-sm text-gray-600 font-medium select-none">
+                            자주 쓰는 내역으로 저장
+                        </span>
+                    </div>
+
+                    {/* 자주 쓰는 내역 불러오기 버튼 */}
+                    {frequentTemplates.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setIsFrequentOpen(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 rounded-lg active:scale-95 transition-transform"
+                        >
+                            <Zap className="w-4 h-4" />
+                            <span className="text-sm font-semibold">자주 쓰는 내역</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -335,7 +418,7 @@ export default function AddPage() {
                 className="mt-auto"
             />
 
-            {/* Date Picker Modal - Calendar Style */}
+            {/* Date Picker Modal */}
             {isDatePickerOpen && (
                 <CalendarDatePicker
                     selectedDate={selectedDate}
@@ -395,6 +478,78 @@ export default function AddPage() {
                                     </button>
                                 )
                             })}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Frequent Templates Modal */}
+            {isFrequentOpen && (
+                <div className="fixed inset-0 z-50">
+                    <div
+                        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+                        onClick={() => setIsFrequentOpen(false)}
+                    />
+
+                    <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[2rem] p-6 pb-10 max-w-md mx-auto">
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-2">
+                                <Zap className="w-5 h-5 text-amber-500" />
+                                <h2 className="text-lg font-semibold text-gray-900">자주 쓰는 내역</h2>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsFrequentOpen(false)}
+                                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center active:scale-95 transition-transform"
+                            >
+                                <X className="w-4 h-4 text-gray-500" />
+                            </button>
+                        </div>
+
+                        <div className="flex flex-col gap-3 max-h-[50vh] overflow-y-auto scrollbar-hide">
+                            {frequentTemplates.map((template) => {
+                                const cat = categories.find(c => c.id === template.category_id)
+                                const catName = cat?.name ?? '미분류'
+                                const Icon = iconMap[catName] || MoreHorizontal
+                                const colorClass = colorMap[catName] || 'bg-gray-100 text-gray-600'
+
+                                return (
+                                    <button
+                                        key={template.id}
+                                        type="button"
+                                        onClick={() => {
+                                            handleChipTap(template)
+                                            setIsFrequentOpen(false)
+                                        }}
+                                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl active:scale-[0.98] transition-all hover:bg-gray-100 text-left"
+                                    >
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colorClass}`}>
+                                            <Icon className="w-5 h-5" />
+                                        </div>
+                                        <div className="flex flex-col items-start min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 w-full">
+                                                <span className={`text-xs font-medium px-1.5 py-0.5 rounded-md flex-shrink-0 ${TYPE_COLOR[template.transaction_type as TransactionType]}`}>
+                                                    {TYPE_LABEL[template.transaction_type as TransactionType]}
+                                                </span>
+                                            </div>
+                                            <span className="mt-1 text-sm font-semibold text-gray-900 truncate">
+                                                {template.description}
+                                            </span>
+                                        </div>
+                                        {template.amount != null && (
+                                            <span className="text-sm font-semibold text-gray-900 flex-shrink-0">
+                                                {template.amount.toLocaleString('ko-KR')}원
+                                            </span>
+                                        )}
+                                    </button>
+                                )
+                            })}
+
+                            {frequentTemplates.length === 0 && (
+                                <div className="text-center py-8 text-gray-500 text-sm">
+                                    저장된 자주 쓰는 내역이 없습니다.
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

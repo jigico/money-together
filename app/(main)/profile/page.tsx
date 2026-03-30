@@ -20,7 +20,8 @@ import {
     Copy,
     Check,
     X,
-    Pencil
+    Pencil,
+    Zap
 } from "lucide-react"
 import Link from "next/link"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -282,6 +283,16 @@ export default function ProfilePage() {
                                     <Users className="w-5 h-5 text-blue-600" />
                                 </div>
                                 <span className="text-[15px] font-medium text-gray-900">멤버 초대</span>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-gray-400" />
+                        </Link>
+                        <div className="border-t border-gray-100" />
+                        <Link href="/frequent-templates" className="w-full px-5 py-4 flex items-center justify-between active:bg-gray-50 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center">
+                                    <Zap className="w-5 h-5 text-amber-600" />
+                                </div>
+                                <span className="text-[15px] font-medium text-gray-900">자주 쓰는 내역 관리</span>
                             </div>
                             <ChevronRight className="w-5 h-5 text-gray-400" />
                         </Link>
