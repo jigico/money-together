@@ -7,7 +7,8 @@ export async function addTransaction(data: {
     amount: number
     category_id: string
     member_id: string
-    description: string
+    payee: string
+    description?: string | null
     date?: string
     transaction_type?: TransactionType
 }) {
@@ -24,7 +25,8 @@ export async function addTransaction(data: {
             amount: data.amount,
             category_id: data.category_id,
             member_id: data.member_id,
-            description: data.description,
+            payee: data.payee,
+            description: data.description ?? null,
             date: data.date || new Date().toISOString().split('T')[0],
             transaction_type: data.transaction_type || 'expense',
         }] as any)
@@ -44,7 +46,8 @@ export async function updateTransaction(id: string, data: Partial<{
     amount: number
     category_id: string
     member_id: string
-    description: string
+    payee: string
+    description: string | null
     date: string
     transaction_type: TransactionType
 }>) {
@@ -121,7 +124,8 @@ const FREQUENT_LIMIT = 15
 export async function addFrequentTransaction(data: {
     transaction_type: TransactionType
     category_id: string
-    description: string
+    payee: string
+    description?: string | null
     amount?: number | null
 }): Promise<{ success: boolean; error?: string; data?: FrequentTransaction }> {
     const groupId = await getCurrentGroupId()
@@ -134,7 +138,7 @@ export async function addFrequentTransaction(data: {
         .eq('group_id', groupId)
         .eq('transaction_type', data.transaction_type)
         .eq('category_id', data.category_id)
-        .eq('description', data.description)
+        .eq('payee', data.payee)
 
     if (data.amount != null) {
         duplicateQuery = duplicateQuery.eq('amount', data.amount)
@@ -165,7 +169,8 @@ export async function addFrequentTransaction(data: {
             group_id: groupId,
             transaction_type: data.transaction_type,
             category_id: data.category_id,
-            description: data.description,
+            payee: data.payee,
+            description: data.description ?? null,
             amount: data.amount ?? null,
         }] as any)
         .select()
@@ -185,7 +190,8 @@ export async function updateFrequentTransaction(
     data: Partial<{
         transaction_type: TransactionType
         category_id: string
-        description: string
+        payee: string
+        description: string | null
         amount: number | null
     }>
 ): Promise<{ success: boolean; error?: string }> {

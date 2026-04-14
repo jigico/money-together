@@ -38,7 +38,8 @@ CREATE TABLE IF NOT EXISTS transactions (
   amount INTEGER NOT NULL,
   category_id UUID NOT NULL REFERENCES categories(id) ON DELETE SET DEFAULT,
   member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-  description TEXT NOT NULL,
+  payee TEXT NOT NULL,
+  description TEXT,
   date DATE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -49,7 +50,8 @@ CREATE TABLE IF NOT EXISTS frequent_transactions (
   group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
   transaction_type TEXT NOT NULL,
   category_id UUID NOT NULL REFERENCES categories(id) ON DELETE SET DEFAULT,
-  description TEXT NOT NULL,
+  payee TEXT NOT NULL,
+  description TEXT,
   amount INTEGER NULL,
   usage_count INTEGER DEFAULT 0 NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -62,6 +64,7 @@ CREATE INDEX IF NOT EXISTS transactions_date_idx ON transactions(date);
 CREATE INDEX IF NOT EXISTS transactions_category_id_idx ON transactions(category_id);
 CREATE INDEX IF NOT EXISTS transactions_member_id_idx ON transactions(member_id);
 CREATE INDEX IF NOT EXISTS transactions_created_at_idx ON transactions(created_at);
+CREATE INDEX IF NOT EXISTS transactions_payee_idx ON transactions(payee);
 CREATE INDEX IF NOT EXISTS frequent_transactions_group_id_idx ON frequent_transactions(group_id);
 CREATE INDEX IF NOT EXISTS frequent_transactions_usage_count_idx ON frequent_transactions(usage_count DESC);
 
@@ -160,12 +163,12 @@ BEGIN
   SELECT id INTO shopping_id FROM categories WHERE name = '생활' LIMIT 1;
 
   -- 샘플 거래 추가 (MVP 그룹에만)
-  INSERT INTO transactions (group_id, amount, category_id, member_id, description, date) VALUES
-    (mvp_group_id, 45000, food_id, husband_id, '저녁 식사', CURRENT_DATE),
-    (mvp_group_id, 12000, transport_id, wife_id, '택시', CURRENT_DATE),
-    (mvp_group_id, 8500, cafe_id, husband_id, '스타벅스', CURRENT_DATE - 1),
-    (mvp_group_id, 125000, shopping_id, wife_id, '생활용품 구매', CURRENT_DATE - 1),
-    (mvp_group_id, 15000, food_id, husband_id, '편의점', CURRENT_DATE - 3);
+  INSERT INTO transactions (group_id, amount, category_id, member_id, payee, description, date) VALUES
+    (mvp_group_id, 45000, food_id, husband_id, '저녁 식사', NULL, CURRENT_DATE),
+    (mvp_group_id, 12000, transport_id, wife_id, '택시', NULL, CURRENT_DATE),
+    (mvp_group_id, 8500, cafe_id, husband_id, '스타벅스', NULL, CURRENT_DATE - 1),
+    (mvp_group_id, 125000, shopping_id, wife_id, '생활용품 구매', NULL, CURRENT_DATE - 1),
+    (mvp_group_id, 15000, food_id, husband_id, '편의점', NULL, CURRENT_DATE - 3);
 END $$;
 
 -- NOTE: current_group 뷰는 MVP 초기 임시 뷰로, 현재 앱에서 사용하지 않음 (삭제됨)

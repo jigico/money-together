@@ -91,6 +91,7 @@ export default function TransactionDetailPage() {
     const [transactionType, setTransactionType] = useState<TransactionType>('expense')
     const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+    const [payee, setPayee] = useState("")
     const [description, setDescription] = useState("")
     const [selectedDate, setSelectedDate] = useState(new Date())
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
@@ -116,10 +117,11 @@ export default function TransactionDetailPage() {
                 setMembers(membersData)
 
                 if (transactionData) {
-                    // 기존 데이터로 폼 미리 일기
+                    // 기존 데이터로 폼 미리 읽기
                     setAmount(String(transactionData.amount))
                     setSelectedCategory(transactionData.category_id)
-                    setDescription(transactionData.description)
+                    setPayee(transactionData.payee ?? '')
+                    setDescription(transactionData.description ?? '')
                     setSelectedDate(new Date(transactionData.date))
                     setTransactionType((transactionData as any).transaction_type ?? 'expense')
 
@@ -198,7 +200,8 @@ export default function TransactionDetailPage() {
                 amount: Number(amount),
                 category_id: selectedCategory,
                 member_id: selectedMemberId,
-                description: description,
+                payee: payee,
+                description: description.trim() || null,
                 date: formatDateForDB(selectedDate),
                 transaction_type: transactionType,
             })
@@ -208,7 +211,8 @@ export default function TransactionDetailPage() {
                 const result = await addFrequentTransaction({
                     transaction_type: transactionType,
                     category_id: selectedCategory,
-                    description: description,
+                    payee: payee,
+                    description: description.trim() || null,
                     amount: amount ? Number(amount) : null,
                 })
                 if (!result.success && result.error) {
@@ -242,7 +246,7 @@ export default function TransactionDetailPage() {
         setIsCategoryOpen(false)
     }
 
-    const isValid = amount.length > 0 && selectedCategory !== null && description.trim().length > 0 && !saving
+    const isValid = amount.length > 0 && selectedCategory !== null && payee.trim().length > 0 && !saving
 
     if (loading) {
         return (
@@ -363,14 +367,31 @@ export default function TransactionDetailPage() {
                     <ChevronDown className="w-5 h-5 text-gray-500" />
                 </button>
 
-                {/* Description Input */}
-                <div className="bg-white rounded-2xl p-4 shadow-sm">
+                {/* Payee Input (지출처 - 필수) */}
+                <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                    <div className="px-4 pt-3 pb-1">
+                        <span className="text-[10px] font-semibold text-[#0047AB] uppercase tracking-wider">지출처 <span className="text-red-500">*</span></span>
+                    </div>
+                    <input
+                        type="text"
+                        value={payee}
+                        onChange={(e) => setPayee(e.target.value)}
+                        placeholder="어디서 사용했나요? (예: 스타벅스)"
+                        className="w-full bg-transparent text-gray-900 placeholder:text-gray-400 outline-none text-sm px-4 pb-3"
+                    />
+                </div>
+
+                {/* Description Input (메모 - 선택) */}
+                <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                    <div className="px-4 pt-3 pb-1">
+                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">메모 <span className="text-gray-300">(선택)</span></span>
+                    </div>
                     <input
                         type="text"
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        placeholder="설명을 입력하세요"
-                        className="w-full bg-transparent text-gray-900 placeholder:text-gray-400 outline-none text-sm"
+                        placeholder="추가 메모를 입력하세요"
+                        className="w-full bg-transparent text-gray-900 placeholder:text-gray-400 outline-none text-sm px-4 pb-3"
                     />
                 </div>
 
