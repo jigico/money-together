@@ -71,6 +71,7 @@ interface SheetState {
     editId: string | null
     transactionType: TransactionType
     categoryId: string | null
+    payee: string
     description: string
     amountStr: string
     isCategoryOpen: boolean
@@ -82,6 +83,7 @@ const defaultSheet = (): SheetState => ({
     editId: null,
     transactionType: 'expense',
     categoryId: null,
+    payee: '',
     description: '',
     amountStr: '',
     isCategoryOpen: false,
@@ -119,7 +121,8 @@ export default function FrequentTemplatesPage() {
             editId: t.id,
             transactionType: t.transaction_type as TransactionType,
             categoryId: t.category_id,
-            description: t.description,
+            payee: t.payee,
+            description: t.description ?? '',
             amountStr: t.amount != null ? String(t.amount) : '',
             isCategoryOpen: false,
         })
@@ -128,14 +131,15 @@ export default function FrequentTemplatesPage() {
     const closeSheet = () => setSheet(defaultSheet())
 
     const handleSave = async () => {
-        if (!sheet.categoryId || !sheet.description.trim()) return
+        if (!sheet.categoryId || !sheet.payee.trim()) return
         setSaving(true)
         try {
             if (sheet.mode === 'create') {
                 const result = await addFrequentTransaction({
                     transaction_type: sheet.transactionType,
                     category_id: sheet.categoryId,
-                    description: sheet.description.trim(),
+                    payee: sheet.payee.trim(),
+                    description: sheet.description.trim() || null,
                     amount: sheet.amountStr ? Number(sheet.amountStr) : null,
                 })
                 if (!result.success) {
@@ -146,7 +150,8 @@ export default function FrequentTemplatesPage() {
                 const result = await updateFrequentTransaction(sheet.editId, {
                     transaction_type: sheet.transactionType,
                     category_id: sheet.categoryId,
-                    description: sheet.description.trim(),
+                    payee: sheet.payee.trim(),
+                    description: sheet.description.trim() || null,
                     amount: sheet.amountStr ? Number(sheet.amountStr) : null,
                 })
                 if (!result.success) {
@@ -176,7 +181,7 @@ export default function FrequentTemplatesPage() {
     const getCategoryData = (categoryId: string) =>
         categories.find(c => c.id === categoryId)
 
-    const isSheetValid = sheet.categoryId && sheet.description.trim().length > 0
+    const isSheetValid = sheet.categoryId && sheet.payee.trim().length > 0
 
     if (loading) {
         return (
@@ -263,7 +268,10 @@ export default function FrequentTemplatesPage() {
                                         </span>
                                         <span className="text-xs text-gray-400">{cat?.name ?? '미분류'}</span>
                                     </div>
-                                    <p className="text-sm font-semibold text-gray-900 truncate">{template.description}</p>
+                                    <p className="text-sm font-semibold text-gray-900 truncate">{template.payee}</p>
+                                    {template.description && (
+                                        <p className="text-xs text-gray-400 truncate">{template.description}</p>
+                                    )}
                                     <div className="flex items-center gap-2 mt-0.5">
                                         {template.amount != null && (
                                             <span className="text-xs text-gray-500">
@@ -398,14 +406,26 @@ export default function FrequentTemplatesPage() {
                                     )}
                                 </div>
 
-                                {/* 메모 */}
+                                {/* 지출처 */}
                                 <div>
-                                    <label className="text-xs font-semibold text-gray-500 mb-2 block">메모 *</label>
+                                    <label className="text-xs font-semibold text-gray-500 mb-2 block">지출처 *</label>
+                                    <input
+                                        type="text"
+                                        value={sheet.payee}
+                                        onChange={(e) => setSheet(s => ({ ...s, payee: e.target.value }))}
+                                        placeholder="예: 스타벅스"
+                                        className="w-full bg-gray-50 rounded-2xl px-4 py-3.5 text-sm text-gray-900 placeholder:text-gray-400 outline-none border border-gray-100 focus:border-blue-300 transition-colors"
+                                    />
+                                </div>
+
+                                {/* 메모 (선택) */}
+                                <div>
+                                    <label className="text-xs font-semibold text-gray-500 mb-2 block">메모 <span className="text-gray-300">(선택)</span></label>
                                     <input
                                         type="text"
                                         value={sheet.description}
                                         onChange={(e) => setSheet(s => ({ ...s, description: e.target.value }))}
-                                        placeholder="예: 스타벅스 아메리카노"
+                                        placeholder="추가 메모를 입력하세요"
                                         className="w-full bg-gray-50 rounded-2xl px-4 py-3.5 text-sm text-gray-900 placeholder:text-gray-400 outline-none border border-gray-100 focus:border-blue-300 transition-colors"
                                     />
                                 </div>

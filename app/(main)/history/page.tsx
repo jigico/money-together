@@ -485,12 +485,14 @@ export default function HistoryPage() {
                                                 {/* Description */}
                                                 <div className="flex-1 min-w-0">
                                                     <p className="font-medium text-gray-900 text-[15px] truncate flex items-center gap-1">
-                                                        <span>{item.category}</span>
+                                                        <span>{item.payee}</span>
                                                         <span className="text-xs text-gray-400">· {item.memberName}</span>
                                                     </p>
-                                                    <p className="text-xs text-gray-400 mt-0.5 truncate">
-                                                        {item.description}
-                                                    </p>
+                                                    {item.description && (
+                                                        <p className="text-xs text-gray-400 mt-0.5 truncate">
+                                                            {item.description}
+                                                        </p>
+                                                    )}
                                                 </div>
 
                                                 {/* Amount */}
@@ -696,10 +698,12 @@ export default function HistoryPage() {
 
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-medium text-gray-900 text-[15px] truncate flex items-center gap-1">
-                                                    <span>{item.category}</span>
+                                                    <span>{item.payee}</span>
                                                     <span className="text-xs text-gray-400">· {item.memberName}</span>
                                                 </p>
-                                                <p className="text-sm text-gray-500 truncate">{item.description}</p>
+                                                {item.description && (
+                                                    <p className="text-sm text-gray-500 truncate">{item.description}</p>
+                                                )}
                                             </div>
 
                                             <p className="font-bold text-gray-900 text-base flex-shrink-0">

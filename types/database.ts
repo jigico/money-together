@@ -24,7 +24,8 @@ export interface Database {
                     amount: number
                     category_id: string
                     member_id: string
-                    description: string
+                    payee: string
+                    description?: string | null
                     date: string
                 }
                 Update: Partial<{
@@ -32,7 +33,8 @@ export interface Database {
                     amount: number
                     category_id: string
                     member_id: string
-                    description: string
+                    payee: string
+                    description: string | null
                     date: string
                 }>
                 Relationships: [
@@ -118,7 +120,8 @@ export interface Transaction {
     amount: number
     category_id: string
     member_id: string
-    description: string
+    payee: string
+    description: string | null
     created_at: string
     date: string
     transaction_type: TransactionType
@@ -139,7 +142,8 @@ export interface FrequentTransaction {
     group_id: string
     transaction_type: TransactionType
     category_id: string
-    description: string
+    payee: string
+    description: string | null
     amount: number | null
     usage_count: number
     created_at: string
@@ -166,7 +170,8 @@ export interface TransactionUI {
     date: string
     rawDate: string // 원본 날짜 (YYYY-MM-DD)
     color: string
-    description: string
+    payee: string
+    description: string | null
     memberName: string // 지출자 이름
     transactionType: TransactionType
 }
@@ -200,7 +205,8 @@ export function transactionToUI(
         date: formatDate(transaction.date),
         rawDate: transaction.date,
         color: category.color,
-        description: transaction.description,
+        payee: transaction.payee,
+        description: transaction.description ?? null,
         memberName: member.name,
         transactionType: transaction.transaction_type ?? 'expense',
     }
