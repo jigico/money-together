@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { signIn, signUp } from "@/lib/supabase/auth"
 import { supabase } from "@/lib/supabase/client"

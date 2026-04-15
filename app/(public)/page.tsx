@@ -1,5 +1,10 @@
 import Link from "next/link"
 import { ArrowRight, ShieldCheck, Zap, Users } from "lucide-react"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+    title: "부부가 함께 쓰는 공유 가계부 | 머니투게더",
+}
 
 export default function LandingPage() {
     return (

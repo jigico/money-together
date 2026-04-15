@@ -242,6 +242,11 @@ export default function HistoryPage() {
         fetchData()
     }, [currentYear, currentMonth])
 
+    useEffect(() => {
+        const monthNum = currentMonth + 1
+        document.title = `${currentYear}년 ${monthNum}월 내역 | 머니투게더`
+    }, [currentYear, currentMonth])
+
     const goToPrevMonth = () => {
         if (currentMonth === 0) {
             setCurrentMonth(11)
