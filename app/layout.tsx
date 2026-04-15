@@ -4,10 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
     metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://money-together.vercel.app'),
-    title: {
-        template: '%s | 머니투게더 (Money Together)',
-        default: '머니투게더 - 부부가 함께하는 실시간 공유 가계부',
-    },
+    title: '머니투게더 - 부부가 함께하는 실시간 공유 가계부',
     description: "커플, 부부가 함께쓰는 실시간 공유 가계부 앱 머니투게더입니다. 지출, 수입, 자산을 간편하게 관리하고 연동하세요.",
     keywords: ["가계부", "부부 가계부", "공유 가계부", "커플 가계부", "머니투게더", "실시간 가계부", "가계부 어플"],
     openGraph: {
