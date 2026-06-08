@@ -100,6 +100,15 @@ CREATE POLICY "Anyone can update frequent_transactions" ON frequent_transactions
 CREATE POLICY "Anyone can delete frequent_transactions" ON frequent_transactions FOR DELETE USING (true);
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- Data API 접근 권한 (Supabase 보안 정책 변경 대응)
+-- ─────────────────────────────────────────────────────────────────────────────
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.groups TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.members TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.categories TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.transactions TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.frequent_transactions TO anon, authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Supabase RPC: delete_category_safe
 -- 카테고리 삭제 시 참조 내역/템플릿을 미분류로 이관 후 삭제 (원자적 실행)
 -- 사용: SELECT delete_category_safe('<category-uuid>');
