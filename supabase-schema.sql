@@ -1,17 +1,36 @@
 -- Money Together Supabase 데이터베이스 스키마 (Multi-Household Support)
+-- 최종 업데이트: 2026-06-10 (보안 RLS 적용)
 
 -- 1. Groups 테이블 (부부/가구 그룹)
 CREATE TABLE IF NOT EXISTS groups (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
+  invite_code TEXT UNIQUE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 2. Members 테이블 (가족 구성원) - group_id 추가
+-- 초대 코드 자동 생성 트리거
+CREATE OR REPLACE FUNCTION generate_invite_code()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.invite_code := upper(substr(md5(random()::text), 1, 8));
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER set_invite_code
+  BEFORE INSERT ON groups
+  FOR EACH ROW
+  WHEN (NEW.invite_code IS NULL)
+  EXECUTE FUNCTION generate_invite_code();
+
+-- 2. Members 테이블 (가족 구성원) - Auth 사용자와 연결
 CREATE TABLE IF NOT EXISTS members (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) UNIQUE,
   name TEXT NOT NULL,
+  role TEXT DEFAULT 'member' NOT NULL,
   avatar TEXT NOT NULL,
   color TEXT NOT NULL,
   bg_color TEXT NOT NULL,
@@ -31,7 +50,6 @@ CREATE TABLE IF NOT EXISTS categories (
 
 -- 4. Transactions 테이블 (거래 내역) - group_id 추가
 -- category_id: ON DELETE SET DEFAULT → 카테고리 삭제 시 '미분류'로 자동 이관
--- (마이그레이션 실행 후 ON DELETE CASCADE → SET DEFAULT로 FK가 변경됨)
 CREATE TABLE IF NOT EXISTS transactions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
@@ -41,6 +59,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   payee TEXT NOT NULL,
   description TEXT,
   date DATE NOT NULL,
+  transaction_type TEXT DEFAULT 'expense' NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -57,8 +76,23 @@ CREATE TABLE IF NOT EXISTS frequent_transactions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- 6. Budgets 테이블 (월별 예산)
+CREATE TABLE IF NOT EXISTS budgets (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  year INTEGER NOT NULL,
+  month INTEGER NOT NULL CHECK (month >= 1 AND month <= 12),
+  amount INTEGER NOT NULL CHECK (amount > 0),
+  updated_by UUID REFERENCES members(id),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE (group_id, year, month)
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- 인덱스 생성 (성능 최적화)
+-- ─────────────────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS members_group_id_idx ON members(group_id);
+CREATE INDEX IF NOT EXISTS members_user_id_idx ON members(user_id);
 CREATE INDEX IF NOT EXISTS transactions_group_id_idx ON transactions(group_id);
 CREATE INDEX IF NOT EXISTS transactions_date_idx ON transactions(date);
 CREATE INDEX IF NOT EXISTS transactions_category_id_idx ON transactions(category_id);
@@ -68,67 +102,146 @@ CREATE INDEX IF NOT EXISTS transactions_payee_idx ON transactions(payee);
 CREATE INDEX IF NOT EXISTS frequent_transactions_group_id_idx ON frequent_transactions(group_id);
 CREATE INDEX IF NOT EXISTS frequent_transactions_usage_count_idx ON frequent_transactions(usage_count DESC);
 
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Row Level Security (RLS) 활성화
+-- ─────────────────────────────────────────────────────────────────────────────
 ALTER TABLE groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE frequent_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE budgets ENABLE ROW LEVEL SECURITY;
 
--- RLS 정책 (현재는 개발용으로 모두 허용, 추후 인증 추가 시 수정)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- RLS 헬퍼 함수: 현재 인증된 사용자의 group_id 조회
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.user_group_id()
+RETURNS UUID AS $$
+  SELECT group_id FROM public.members WHERE user_id = auth.uid() LIMIT 1;
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- RLS 정책 (Auth 기반 - 그룹 단위 격리)
+-- ─────────────────────────────────────────────────────────────────────────────
+
 -- Groups
-CREATE POLICY "Anyone can read groups" ON groups FOR SELECT USING (true);
-CREATE POLICY "Anyone can insert groups" ON groups FOR INSERT WITH CHECK (true);
+CREATE POLICY "Members can read own group"
+  ON groups FOR SELECT USING (id = public.user_group_id());
+CREATE POLICY "Authenticated users can create groups"
+  ON groups FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Members can update own group"
+  ON groups FOR UPDATE USING (id = public.user_group_id());
+-- 온보딩/초대 시 초대 코드로 그룹 조회 허용
+CREATE POLICY "Authenticated users can lookup groups by invite code"
+  ON groups FOR SELECT USING (auth.uid() IS NOT NULL);
 
 -- Members
-CREATE POLICY "Anyone can read members" ON members FOR SELECT USING (true);
-CREATE POLICY "Anyone can insert members" ON members FOR INSERT WITH CHECK (true);
+CREATE POLICY "Members can read group members"
+  ON members FOR SELECT USING (group_id = public.user_group_id());
+CREATE POLICY "Users can insert themselves as members"
+  ON members FOR INSERT WITH CHECK (auth.uid() IS NOT NULL AND user_id = auth.uid());
+CREATE POLICY "Users can update own member info"
+  ON members FOR UPDATE USING (user_id = auth.uid());
 
--- Categories (공통 데이터)
-CREATE POLICY "Anyone can read categories" ON categories FOR SELECT USING (true);
+-- Categories (공통 데이터 - 인증된 사용자만 읽기)
+CREATE POLICY "Authenticated users can read categories"
+  ON categories FOR SELECT USING (auth.uid() IS NOT NULL);
 
--- Transactions
-CREATE POLICY "Anyone can read transactions" ON transactions FOR SELECT USING (true);
-CREATE POLICY "Anyone can insert transactions" ON transactions FOR INSERT WITH CHECK (true);
-CREATE POLICY "Anyone can update transactions" ON transactions FOR UPDATE USING (true);
-CREATE POLICY "Anyone can delete transactions" ON transactions FOR DELETE USING (true);
+-- Transactions (그룹 단위 격리)
+CREATE POLICY "Members can read group transactions"
+  ON transactions FOR SELECT USING (group_id = public.user_group_id());
+CREATE POLICY "Members can insert group transactions"
+  ON transactions FOR INSERT WITH CHECK (group_id = public.user_group_id());
+CREATE POLICY "Members can update group transactions"
+  ON transactions FOR UPDATE USING (group_id = public.user_group_id());
+CREATE POLICY "Members can delete group transactions"
+  ON transactions FOR DELETE USING (group_id = public.user_group_id());
 
--- Frequent Transactions
-CREATE POLICY "Anyone can read frequent_transactions" ON frequent_transactions FOR SELECT USING (true);
-CREATE POLICY "Anyone can insert frequent_transactions" ON frequent_transactions FOR INSERT WITH CHECK (true);
-CREATE POLICY "Anyone can update frequent_transactions" ON frequent_transactions FOR UPDATE USING (true);
-CREATE POLICY "Anyone can delete frequent_transactions" ON frequent_transactions FOR DELETE USING (true);
+-- Frequent Transactions (그룹 단위 격리)
+CREATE POLICY "Members can read group frequent_transactions"
+  ON frequent_transactions FOR SELECT USING (group_id = public.user_group_id());
+CREATE POLICY "Members can insert group frequent_transactions"
+  ON frequent_transactions FOR INSERT WITH CHECK (group_id = public.user_group_id());
+CREATE POLICY "Members can update group frequent_transactions"
+  ON frequent_transactions FOR UPDATE USING (group_id = public.user_group_id());
+CREATE POLICY "Members can delete group frequent_transactions"
+  ON frequent_transactions FOR DELETE USING (group_id = public.user_group_id());
+
+-- Budgets (그룹 단위 격리)
+CREATE POLICY "Members can read group budgets"
+  ON budgets FOR SELECT USING (group_id = public.user_group_id());
+CREATE POLICY "Members can upsert group budgets"
+  ON budgets FOR INSERT WITH CHECK (group_id = public.user_group_id());
+CREATE POLICY "Members can update group budgets"
+  ON budgets FOR UPDATE USING (group_id = public.user_group_id());
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- Data API 접근 권한 (Supabase 보안 정책 변경 대응)
+-- Data API 접근 권한 (인증된 사용자만, anon 차단)
 -- ─────────────────────────────────────────────────────────────────────────────
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.groups TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.members TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.categories TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.transactions TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.frequent_transactions TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.groups TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.members TO authenticated;
+GRANT SELECT ON public.categories TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.transactions TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.frequent_transactions TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.budgets TO authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- Supabase RPC: delete_category_safe
--- 카테고리 삭제 시 참조 내역/템플릿을 미분류로 이관 후 삭제 (원자적 실행)
--- 사용: SELECT delete_category_safe('<category-uuid>');
+-- RPC 함수: delete_category_safe (권한 검증 포함)
 -- ─────────────────────────────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION delete_category_safe(target_id UUID)
 RETURNS void AS $$
 DECLARE
   uncategorized_id UUID;
+  caller_group_id UUID;
 BEGIN
+  -- 호출자의 group_id 확인
+  SELECT group_id INTO caller_group_id
+  FROM members WHERE user_id = auth.uid();
+
+  IF caller_group_id IS NULL THEN
+    RAISE EXCEPTION '인증되지 않은 사용자입니다.';
+  END IF;
+
   SELECT id INTO uncategorized_id FROM categories WHERE is_system = true LIMIT 1;
   IF uncategorized_id IS NULL THEN
     RAISE EXCEPTION '미분류 카테고리를 찾을 수 없습니다.';
   END IF;
-  UPDATE transactions SET category_id = uncategorized_id WHERE category_id = target_id;
-  UPDATE frequent_transactions SET category_id = uncategorized_id WHERE category_id = target_id;
+
+  -- 해당 그룹의 트랜잭션만 업데이트
+  UPDATE transactions
+  SET category_id = uncategorized_id
+  WHERE category_id = target_id AND group_id = caller_group_id;
+
+  UPDATE frequent_transactions
+  SET category_id = uncategorized_id
+  WHERE category_id = target_id AND group_id = caller_group_id;
+
   DELETE FROM categories WHERE id = target_id AND is_system = false;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- RPC 함수: increment_frequent_usage (권한 검증 포함)
+CREATE OR REPLACE FUNCTION increment_frequent_usage(row_id UUID)
+RETURNS void AS $$
+DECLARE
+  caller_group_id UUID;
+BEGIN
+  SELECT group_id INTO caller_group_id
+  FROM members WHERE user_id = auth.uid();
+
+  IF caller_group_id IS NULL THEN
+    RAISE EXCEPTION '인증되지 않은 사용자입니다.';
+  END IF;
+
+  UPDATE frequent_transactions
+  SET usage_count = usage_count + 1
+  WHERE id = row_id AND group_id = caller_group_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- 초기 데이터 삽입
+-- ─────────────────────────────────────────────────────────────────────────────
 
 -- Categories 초기 데이터 (모든 그룹이 공유)
 INSERT INTO categories (name, icon, color, is_system) VALUES
@@ -141,44 +254,3 @@ INSERT INTO categories (name, icon, color, is_system) VALUES
   ('병원', '🏥', '#ec4899', false),
   ('기타', '📦', '#9ca3af', false)
 ON CONFLICT (name) DO NOTHING;
-
--- MVP용 초기 그룹 및 멤버 생성
-DO $$
-DECLARE
-  mvp_group_id UUID;
-  husband_id UUID;
-  wife_id UUID;
-  food_id UUID;
-  transport_id UUID;
-  cafe_id UUID;
-  shopping_id UUID;
-BEGIN
-  -- MVP 그룹 생성
-  INSERT INTO groups (name) VALUES ('MVP 부부') RETURNING id INTO mvp_group_id;
-
-  -- MVP 그룹의 멤버 생성
-  INSERT INTO members (group_id, name, avatar, color, bg_color) VALUES
-    (mvp_group_id, '남편', '남', '#0047AB', '#0047AB')
-  RETURNING id INTO husband_id;
-
-  INSERT INTO members (group_id, name, avatar, color, bg_color) VALUES
-    (mvp_group_id, '아내', '여', '#fb7185', '#fb7185')
-  RETURNING id INTO wife_id;
-
-  -- 카테고리 ID 가져오기
-  SELECT id INTO food_id FROM categories WHERE name = '식비' LIMIT 1;
-  SELECT id INTO transport_id FROM categories WHERE name = '교통' LIMIT 1;
-  SELECT id INTO cafe_id FROM categories WHERE name = '카페' LIMIT 1;
-  SELECT id INTO shopping_id FROM categories WHERE name = '생활' LIMIT 1;
-
-  -- 샘플 거래 추가 (MVP 그룹에만)
-  INSERT INTO transactions (group_id, amount, category_id, member_id, payee, description, date) VALUES
-    (mvp_group_id, 45000, food_id, husband_id, '저녁 식사', NULL, CURRENT_DATE),
-    (mvp_group_id, 12000, transport_id, wife_id, '택시', NULL, CURRENT_DATE),
-    (mvp_group_id, 8500, cafe_id, husband_id, '스타벅스', NULL, CURRENT_DATE - 1),
-    (mvp_group_id, 125000, shopping_id, wife_id, '생활용품 구매', NULL, CURRENT_DATE - 1),
-    (mvp_group_id, 15000, food_id, husband_id, '편의점', NULL, CURRENT_DATE - 3);
-END $$;
-
--- NOTE: current_group 뷰는 MVP 초기 임시 뷰로, 현재 앱에서 사용하지 않음 (삭제됨)
--- 현재 그룹 ID는 helpers.ts의 getCurrentGroupId()에서 Auth 기반으로 조회함

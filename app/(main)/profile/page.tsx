@@ -58,16 +58,16 @@ export default function ProfilePage() {
     useEffect(() => {
         async function loadProfileData() {
             try {
-                // Get user session
-                const { data: { session } } = await supabase.auth.getSession()
-                if (!session) {
+                // Get verified user (getUser()는 서버에서 JWT를 검증)
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) {
                     router.push('/login')
                     return
                 }
 
-                setUserEmail(session.user.email || "")
+                setUserEmail(user.email || "")
                 // user_metadata는 비어있을 수 있으므로 임시 폴백만 사용
-                setUserNickname(session.user.user_metadata?.nickname || "")
+                setUserNickname(user.user_metadata?.nickname || "")
 
                 // Get group info
                 const groupInfo = await getCurrentGroupInfo()
@@ -79,7 +79,7 @@ export default function ProfilePage() {
                 // Get members — 현재 사용자의 멤버 이름을 members 테이블에서 직접 읽기
                 const membersData = await getMembers()
                 setMembers(membersData)
-                const myMember = membersData.find(m => m.user_id === session.user.id)
+                const myMember = membersData.find(m => m.user_id === user.id)
                 if (myMember) {
                     setUserNickname(myMember.name)
                 }

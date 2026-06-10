@@ -35,7 +35,14 @@ function LoginContent() {
     const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null)
 
     const getSuccessRedirect = () => {
-        if (redirectTo) return redirectTo
+        if (redirectTo) {
+            // 오픈 리다이렉트 방지: 상대 경로만 허용
+            if (redirectTo.startsWith('/') && !redirectTo.startsWith('//')) {
+                return redirectTo
+            }
+            // 외부 URL이면 무시
+            return null
+        }
         return null // 미들웨어가 그룹 여부 판단 후 리다이렉트
     }
 

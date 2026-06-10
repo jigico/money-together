@@ -41,7 +41,7 @@ export async function addTransaction(data: {
     return transaction
 }
 
-// 거래 수정
+// 거래 수정 (그룹 소유권 검증 포함)
 export async function updateTransaction(id: string, data: Partial<{
     amount: number
     category_id: string
@@ -51,11 +51,17 @@ export async function updateTransaction(id: string, data: Partial<{
     date: string
     transaction_type: TransactionType
 }>) {
+    const groupId = await getCurrentGroupId()
+    if (!groupId) {
+        throw new Error('그룹 ID를 찾을 수 없습니다')
+    }
+
     const { data: transaction, error } = await supabase
         .from('transactions')
         // @ts-ignore
         .update(data as any)
         .eq('id', id)
+        .eq('group_id', groupId)
         .select()
         .single()
 
@@ -67,12 +73,18 @@ export async function updateTransaction(id: string, data: Partial<{
     return transaction
 }
 
-// 거래 삭제
+// 거래 삭제 (그룹 소유권 검증 포함)
 export async function deleteTransaction(id: string) {
+    const groupId = await getCurrentGroupId()
+    if (!groupId) {
+        throw new Error('그룹 ID를 찾을 수 없습니다')
+    }
+
     const { error } = await supabase
         .from('transactions')
         .delete()
         .eq('id', id)
+        .eq('group_id', groupId)
 
     if (error) {
         console.error('Error deleting transaction:', error)
@@ -184,7 +196,7 @@ export async function addFrequentTransaction(data: {
     return { success: true, data: inserted as FrequentTransaction }
 }
 
-// 자주 쓰는 내역 수정
+// 자주 쓰는 내역 수정 (그룹 소유권 검증 포함)
 export async function updateFrequentTransaction(
     id: string,
     data: Partial<{
@@ -195,11 +207,15 @@ export async function updateFrequentTransaction(
         amount: number | null
     }>
 ): Promise<{ success: boolean; error?: string }> {
+    const groupId = await getCurrentGroupId()
+    if (!groupId) return { success: false, error: '그룹 정보를 찾을 수 없습니다.' }
+
     const { error } = await supabase
         .from('frequent_transactions')
         // @ts-ignore
         .update(data as any)
         .eq('id', id)
+        .eq('group_id', groupId)
 
     if (error) {
         console.error('Error updating frequent transaction:', error)
@@ -209,12 +225,16 @@ export async function updateFrequentTransaction(
     return { success: true }
 }
 
-// 자주 쓰는 내역 삭제
+// 자주 쓰는 내역 삭제 (그룹 소유권 검증 포함)
 export async function deleteFrequentTransaction(id: string): Promise<{ success: boolean; error?: string }> {
+    const groupId = await getCurrentGroupId()
+    if (!groupId) return { success: false, error: '그룹 정보를 찾을 수 없습니다.' }
+
     const { error } = await supabase
         .from('frequent_transactions')
         .delete()
         .eq('id', id)
+        .eq('group_id', groupId)
 
     if (error) {
         console.error('Error deleting frequent transaction:', error)

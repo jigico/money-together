@@ -57,7 +57,8 @@ export async function middleware(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     const path = request.nextUrl.pathname
 
-    console.log('[Middleware] Path:', path, 'User:', user?.id)
+    const isDev = process.env.NODE_ENV === 'development'
+    isDev && console.log('[Middleware] Path:', path, 'User:', user?.id)
 
     const publicPaths = ['/login', '/']
     const isPublicPath = publicPaths.some(p => path === p || (path.startsWith(p) && p !== '/'))
@@ -65,7 +66,7 @@ export async function middleware(request: NextRequest) {
     // 1. 미인증 사용자 처리
     if (!user) {
         if (!isPublicPath) {
-            console.log('[Middleware] No user, redirect to /login')
+            isDev && console.log('[Middleware] No user, redirect to /login')
             const loginUrl = new URL('/login', request.url)
             const originalPath = path + request.nextUrl.search
             if (path !== '/') {
@@ -88,7 +89,7 @@ export async function middleware(request: NextRequest) {
     if (hasGroup) {
         // 그룹이 있는 경우, 로그인/온보딩/루트 접근 시 대시보드로 이동
         if (path === '/' || path === '/login' || path === '/onboarding') {
-            console.log('[Middleware] Logged in & has group, redirect to /dashboard')
+            isDev && console.log('[Middleware] Logged in & has group, redirect to /dashboard')
             return NextResponse.redirect(new URL('/dashboard', request.url))
         }
     } else {
@@ -101,18 +102,18 @@ export async function middleware(request: NextRequest) {
                 const code = redirectUrl.searchParams.get('code')
                 if (code) onboardingUrl.searchParams.set('code', code)
             }
-            console.log('[Middleware] Logged in but no group, redirect to /onboarding')
+            isDev && console.log('[Middleware] Logged in but no group, redirect to /onboarding')
             return NextResponse.redirect(onboardingUrl)
         }
         
         // 온보딩 페이지가 아닌 곳으로 갈 경우 온보딩으로 강제 이동
         if (path !== '/onboarding') {
-            console.log('[Middleware] No group, redirect to /onboarding')
+            isDev && console.log('[Middleware] No group, redirect to /onboarding')
             return NextResponse.redirect(new URL('/onboarding', request.url))
         }
     }
 
-    console.log('[Middleware] No redirect, continue')
+    isDev && console.log('[Middleware] No redirect, continue')
     return response
 }
 
