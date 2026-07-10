@@ -95,7 +95,7 @@ export async function joinGroupByCode(
             .from('groups')
             .select('id, name')
             .eq('invite_code', inviteCode.toUpperCase())
-            .single()
+            .maybeSingle()
 
         const group = data as { id: string; name: string } | null
 
@@ -112,7 +112,7 @@ export async function joinGroupByCode(
             .select('id')
             .eq('group_id', group.id)
             .eq('user_id', userId)
-            .single()
+            .maybeSingle()
 
         if (existingMember) {
             return {

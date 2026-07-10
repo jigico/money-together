@@ -25,7 +25,7 @@ async function fetchGroupId(): Promise<string | null> {
             .from('members')
             .select('group_id')
             .eq('user_id', user.id)
-            .single() as { data: { group_id: string } | null, error: any }
+            .maybeSingle() as { data: { group_id: string } | null, error: any }
 
         if (error || !data) {
             console.error('Error fetching user group:', error)
@@ -73,7 +73,7 @@ async function fetchMemberId(): Promise<string | null> {
             .from('members')
             .select('id')
             .eq('user_id', user.id)
-            .single() as { data: { id: string } | null, error: any }
+            .maybeSingle() as { data: { id: string } | null, error: any }
 
         if (error || !data) {
             console.error('Error fetching user member:', error)

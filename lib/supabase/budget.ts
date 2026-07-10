@@ -18,14 +18,14 @@ export async function getBudget(year: number, month: number): Promise<number> {
     const groupId = await getCurrentGroupId()
     if (!groupId) return DEFAULT_BUDGET
 
-    // 이번 달 예산 조회
+    // 이번 달 예산 조회 (행이 없어도 정상이므로 maybeSingle 사용 → 406 방지)
     const { data: current } = await supabase
         .from('budgets')
         .select('amount')
         .eq('group_id', groupId)
         .eq('year', year)
         .eq('month', month)
-        .single() as { data: { amount: number } | null }
+        .maybeSingle() as { data: { amount: number } | null }
 
     if (current) return current.amount
 
@@ -39,7 +39,7 @@ export async function getBudget(year: number, month: number): Promise<number> {
         .eq('group_id', groupId)
         .eq('year', prevYear)
         .eq('month', prevMonth)
-        .single() as { data: { amount: number } | null }
+        .maybeSingle() as { data: { amount: number } | null }
 
     return prev ? prev.amount : DEFAULT_BUDGET
 }
