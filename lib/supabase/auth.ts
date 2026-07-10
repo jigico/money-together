@@ -120,6 +120,56 @@ export async function signOut(): Promise<AuthResult> {
 }
 
 /**
+ * 비밀번호 재설정 메일 발송
+ * @param email 가입한 이메일
+ */
+export async function requestPasswordReset(email: string): Promise<AuthResult> {
+    try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/reset-password`,
+        })
+
+        if (error) {
+            return {
+                success: false,
+                error: { message: error.message },
+            }
+        }
+
+        return { success: true }
+    } catch (error) {
+        return {
+            success: false,
+            error: { message: '재설정 메일 발송 중 오류가 발생했습니다.' },
+        }
+    }
+}
+
+/**
+ * 비밀번호 변경 (재설정 링크로 로그인된 세션에서 호출)
+ * @param newPassword 새 비밀번호
+ */
+export async function updatePassword(newPassword: string): Promise<AuthResult> {
+    try {
+        const { error } = await supabase.auth.updateUser({ password: newPassword })
+
+        if (error) {
+            return {
+                success: false,
+                error: { message: error.message },
+            }
+        }
+
+        return { success: true }
+    } catch (error) {
+        return {
+            success: false,
+            error: { message: '비밀번호 변경 중 오류가 발생했습니다.' },
+        }
+    }
+}
+
+/**
  * 현재 사용자 정보 조회
  */
 export async function getUser() {

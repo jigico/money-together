@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { signIn, signUp } from "@/lib/supabase/auth"
 import { supabase } from "@/lib/supabase/client"
 import { Card } from "@/components/ui/card"
@@ -192,7 +193,14 @@ function LoginContent() {
                 )}
 
                 <div>
-                    <Label htmlFor="password" className="text-sm font-medium text-gray-700">비밀번호</Label>
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="password" className="text-sm font-medium text-gray-700">비밀번호</Label>
+                        {mode === 'login' && (
+                            <Link href="/forgot-password" className="text-xs text-gray-400 hover:text-blue-600 transition-colors">
+                                비밀번호를 잊으셨나요?
+                            </Link>
+                        )}
+                    </div>
                     <Input
                         id="password" type="password" value={password}
                         onChange={(e) => setPassword(e.target.value)}

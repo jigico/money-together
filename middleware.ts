@@ -60,7 +60,7 @@ export async function middleware(request: NextRequest) {
     const isDev = process.env.NODE_ENV === 'development'
     isDev && console.log('[Middleware] Path:', path, 'User:', user?.id)
 
-    const publicPaths = ['/login', '/']
+    const publicPaths = ['/login', '/forgot-password', '/reset-password', '/']
     const isPublicPath = publicPaths.some(p => path === p || (path.startsWith(p) && p !== '/'))
 
     // 1. 미인증 사용자 처리
@@ -107,7 +107,8 @@ export async function middleware(request: NextRequest) {
         }
         
         // 온보딩 페이지가 아닌 곳으로 갈 경우 온보딩으로 강제 이동
-        if (path !== '/onboarding') {
+        // (비밀번호 재설정 플로우는 그룹 없이도 접근 가능해야 함)
+        if (path !== '/onboarding' && path !== '/reset-password' && path !== '/forgot-password') {
             isDev && console.log('[Middleware] No group, redirect to /onboarding')
             return NextResponse.redirect(new URL('/onboarding', request.url))
         }
