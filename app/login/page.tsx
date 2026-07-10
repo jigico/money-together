@@ -196,7 +196,7 @@ function LoginContent() {
                     <div className="flex items-center justify-between">
                         <Label htmlFor="password" className="text-sm font-medium text-gray-700">비밀번호</Label>
                         {mode === 'login' && (
-                            <Link href="/forgot-password" className="text-xs text-gray-400 hover:text-blue-600 transition-colors">
+                            <Link href="/forgot-password" className="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">
                                 비밀번호를 잊으셨나요?
                             </Link>
                         )}
@@ -244,7 +244,7 @@ function LoginContent() {
                 </Button>
             </form>
 
-            <div className="mt-6 text-center">
+            <div className="mt-6 flex items-center justify-center gap-3">
                 <button
                     type="button"
                     onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setUnconfirmedEmail(null); setResendSuccess(false) }}
@@ -252,6 +252,14 @@ function LoginContent() {
                 >
                     {mode === 'login' ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인'}
                 </button>
+                {mode === 'login' && (
+                    <>
+                        <span className="text-gray-200">|</span>
+                        <Link href="/forgot-password" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                            비밀번호 찾기
+                        </Link>
+                    </>
+                )}
             </div>
         </Card>
     )
