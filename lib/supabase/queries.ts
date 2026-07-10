@@ -729,10 +729,17 @@ export async function getStatsDashboardData(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 월별 지출 추이 통합 조회 (5개 쿼리 -> 1개 쿼리로 최적화)
+// 월별 재무 추이 통합 조회 (지출 + 저축 + 투자, 단일 쿼리)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function getOptimizedMonthlySpending(monthsBack: number = 5): Promise<{ month: string; amount: number }[]> {
+export interface MonthlyTrendData {
+    month: string
+    expense: number
+    savings: number
+    investment: number
+}
+
+export async function getMonthlyFinancialTrend(monthsBack: number = 5): Promise<MonthlyTrendData[]> {
     const groupId = await getCurrentGroupId()
     if (!groupId) return []
 
@@ -741,16 +748,16 @@ export async function getOptimizedMonthlySpending(monthsBack: number = 5): Promi
     const startDateObj = new Date(now.getFullYear(), now.getMonth() - (monthsBack - 1), 1)
     const pad = (n: number) => String(n).padStart(2, '0')
     const startStr = `${startDateObj.getFullYear()}-${pad(startDateObj.getMonth() + 1)}-01`
-    
+
     // 종료일(이번 달 말일)
     const endStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate())}`
 
     // 1. 단일 쿼리로 전체 범위 가져오기
     const { data: transactions, error } = await supabase
         .from('transactions')
-        .select('date, amount')
+        .select('date, amount, transaction_type')
         .eq('group_id', groupId)
-        .eq('transaction_type', 'expense')
+        .in('transaction_type', ['expense', 'savings', 'investment'])
         .gte('date', startStr)
         .lte('date', endStr)
 
@@ -758,14 +765,16 @@ export async function getOptimizedMonthlySpending(monthsBack: number = 5): Promi
 
     // 2. 월별로 그룹화
     // 기본 배열 세팅 (과거 월 -> 현재 월)
-    const monthlyData: { month: string; amount: number; key: string }[] = []
-    
+    const monthlyData: (MonthlyTrendData & { key: string })[] = []
+
     for (let i = monthsBack - 1; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
         const key = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`
         monthlyData.push({
             month: `${d.getMonth() + 1}월`,
-            amount: 0,
+            expense: 0,
+            savings: 0,
+            investment: 0,
             key
         })
     }
@@ -776,9 +785,9 @@ export async function getOptimizedMonthlySpending(monthsBack: number = 5): Promi
         const txKey = tx.date.substring(0, 7)
         const targetMonth = monthlyData.find(m => m.key === txKey)
         if (targetMonth) {
-            targetMonth.amount += tx.amount
+            targetMonth[tx.transaction_type as 'expense' | 'savings' | 'investment'] += tx.amount
         }
     })
 
-    return monthlyData.map(({ month, amount }) => ({ month, amount }))
+    return monthlyData.map(({ month, expense, savings, investment }) => ({ month, expense, savings, investment }))
 }

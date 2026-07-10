@@ -7,7 +7,7 @@ import { CategoryDonutChart, type CategoryData } from "@/components/stats/catego
 import { MemberComparisonBar, type MemberSpending } from "@/components/stats/member-comparison-bar"
 import { MonthlyTrendChart, type MonthlyData } from "@/components/stats/monthly-trend-chart"
 import { TopCategoriesList, type TopCategory } from "@/components/stats/top-categories-list"
-import { getDashboardSummary, getStatsDashboardData, getOptimizedMonthlySpending } from "@/lib/supabase/queries"
+import { getDashboardSummary, getStatsDashboardData, getMonthlyFinancialTrend } from "@/lib/supabase/queries"
 import type { MemberFinancialSummary, DashboardSummary } from "@/lib/supabase/queries"
 import { MemberFinancialProfile } from "@/components/stats/member-financial-profile"
 import { MonthlySavingsCard } from "@/components/stats/monthly-savings-card"
@@ -48,7 +48,7 @@ export default function StatsPage() {
                 const [statsData, prevSummary, monthlyPattern] = await Promise.all([
                     getStatsDashboardData(startOfMonth, endOfMonth),
                     getDashboardSummary(startOfPrevMonth, endOfPrevMonth),
-                    getOptimizedMonthlySpending(5),
+                    getMonthlyFinancialTrend(5),
                 ])
 
                 setCategoryData(statsData.categoryData)
