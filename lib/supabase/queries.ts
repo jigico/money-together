@@ -545,6 +545,9 @@ export interface StatsDashboardData {
     memberSpending: MemberSpendingUI[]
     topCategories: any[]
     totalSpending: number
+    totalIncome: number
+    totalSavings: number
+    totalInvestment: number
     memberFinancials: MemberFinancialSummary[]
 }
 
@@ -557,6 +560,9 @@ export async function getStatsDashboardData(
         memberSpending: [],
         topCategories: [],
         totalSpending: 0,
+        totalIncome: 0,
+        totalSavings: 0,
+        totalInvestment: 0,
         memberFinancials: []
     }
 
@@ -593,9 +599,12 @@ export async function getStatsDashboardData(
 
     // 카테고리별 지출 (expense만)
     const categoryMap = new Map<string, { value: number; color: string }>()
-    // 전체 지출 (expense만)
+    // 유형별 그룹 전체 합계
     let totalSpending = 0
-    
+    let totalIncome = 0
+    let totalSavings = 0
+    let totalInvestment = 0
+
     // 멤버별 각종 데이터 맵
     const memberMap = new Map<string, {
         expense: number, income: number, savings: number, investment: number,
@@ -621,6 +630,11 @@ export async function getStatsDashboardData(
         if (mData) {
             mData[type] += amount
         }
+
+        // 유형별 그룹 전체 합계
+        if (type === 'income') totalIncome += amount
+        else if (type === 'savings') totalSavings += amount
+        else if (type === 'investment') totalInvestment += amount
 
         // 지출(expense)인 경우 카테고리/전체 합산 처리
         if (type === 'expense') {
@@ -707,6 +721,9 @@ export async function getStatsDashboardData(
         memberSpending,
         topCategories,
         totalSpending,
+        totalIncome,
+        totalSavings,
+        totalInvestment,
         memberFinancials
     }
 }

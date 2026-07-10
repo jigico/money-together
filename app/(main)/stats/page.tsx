@@ -8,8 +8,9 @@ import { MemberComparisonBar, type MemberSpending } from "@/components/stats/mem
 import { MonthlyTrendChart, type MonthlyData } from "@/components/stats/monthly-trend-chart"
 import { TopCategoriesList, type TopCategory } from "@/components/stats/top-categories-list"
 import { getDashboardSummary, getStatsDashboardData, getOptimizedMonthlySpending } from "@/lib/supabase/queries"
-import type { MemberFinancialSummary } from "@/lib/supabase/queries"
+import type { MemberFinancialSummary, DashboardSummary } from "@/lib/supabase/queries"
 import { MemberFinancialProfile } from "@/components/stats/member-financial-profile"
+import { MonthlySavingsCard } from "@/components/stats/monthly-savings-card"
 
 export default function StatsPage() {
     const now = new Date()
@@ -19,7 +20,10 @@ export default function StatsPage() {
     const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([])
     const [topCategories, setTopCategories] = useState<TopCategory[]>([])
     const [totalSpending, setTotalSpending] = useState(0)
-    const [previousMonthSpending, setPreviousMonthSpending] = useState(0)
+    const [totalIncome, setTotalIncome] = useState(0)
+    const [totalSavings, setTotalSavings] = useState(0)
+    const [totalInvestment, setTotalInvestment] = useState(0)
+    const [prevMonthSummary, setPrevMonthSummary] = useState<DashboardSummary>({ expense: 0, income: 0, savings: 0, investment: 0 })
     const [memberFinancials, setMemberFinancials] = useState<MemberFinancialSummary[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -41,7 +45,7 @@ export default function StatsPage() {
                 const endOfPrevMonth = `${prevY}-${pad(prevM)}-${pad(lastDayOfPrev)}`
 
                 // 데이터 가져오기 (7개 분산 쿼리 -> 3개 통합 쿼리로 최적화)
-                const [statsData, prevMonthSummary, monthlyPattern] = await Promise.all([
+                const [statsData, prevSummary, monthlyPattern] = await Promise.all([
                     getStatsDashboardData(startOfMonth, endOfMonth),
                     getDashboardSummary(startOfPrevMonth, endOfPrevMonth),
                     getOptimizedMonthlySpending(5),
@@ -51,8 +55,11 @@ export default function StatsPage() {
                 setMemberSpending(statsData.memberSpending)
                 setTopCategories(statsData.topCategories)
                 setTotalSpending(statsData.totalSpending)
+                setTotalIncome(statsData.totalIncome)
+                setTotalSavings(statsData.totalSavings)
+                setTotalInvestment(statsData.totalInvestment)
                 setMemberFinancials(statsData.memberFinancials)
-                setPreviousMonthSpending(prevMonthSummary.expense)
+                setPrevMonthSummary(prevSummary)
                 setMonthlyData(monthlyPattern)
             } catch (error) {
                 console.error('Error fetching stats data:', error)
@@ -80,6 +87,7 @@ export default function StatsPage() {
     }, [])
 
     // 전월 대비 계산 - useMemo로 최적화
+    const previousMonthSpending = prevMonthSummary.expense
     const monthComparison = useMemo(() => {
         const difference = totalSpending - previousMonthSpending
         const percentageChange = previousMonthSpending > 0
@@ -185,6 +193,19 @@ export default function StatsPage() {
                     )}
                 </Card>
             </div>
+
+            {/* Monthly Savings & Investment Summary */}
+            {(totalSavings > 0 || totalInvestment > 0 || prevMonthSummary.savings > 0 || prevMonthSummary.investment > 0) && (
+                <div className="px-5 mb-6">
+                    <MonthlySavingsCard
+                        savings={totalSavings}
+                        investment={totalInvestment}
+                        income={totalIncome}
+                        prevSavings={prevMonthSummary.savings}
+                        prevInvestment={prevMonthSummary.investment}
+                    />
+                </div>
+            )}
 
             {/* Category Donut Chart */}
             {categoryData.length > 0 ? (

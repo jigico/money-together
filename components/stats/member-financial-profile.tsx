@@ -38,6 +38,10 @@ export function MemberFinancialProfile({ members, className }: MemberFinancialPr
                     const investmentPct = pct(member.investment, base)
                     const remainPct = Math.max(100 - expensePct - savingsPct - investmentPct, 0)
 
+                    // 잔여 = 수입 - (지출 + 저축 + 투자), 수입이 있을 때만 의미 있음
+                    const remainder = member.income - member.expense - member.savings - member.investment
+                    const isOverspent = member.income > 0 && remainder < 0
+
                     return (
                         <div key={member.memberId}>
                             {/* 멤버 헤더 */}
@@ -52,9 +56,14 @@ export function MemberFinancialProfile({ members, className }: MemberFinancialPr
                                     <span className="text-sm font-semibold text-gray-900">{member.memberName}</span>
                                 </div>
                                 {member.income > 0 && (
-                                    <span className="text-xs text-gray-400">
-                                        수입 <span className="font-semibold text-gray-700">₩{member.income.toLocaleString()}</span>
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-400">
+                                            수입 <span className="font-semibold text-gray-700">₩{member.income.toLocaleString()}</span>
+                                        </span>
+                                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${isOverspent ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'}`}>
+                                            {isOverspent ? '초과' : '잔여'} ₩{Math.abs(remainder).toLocaleString()}
+                                        </span>
+                                    </div>
                                 )}
                             </div>
 
@@ -129,6 +138,17 @@ export function MemberFinancialProfile({ members, className }: MemberFinancialPr
                                             투자{' '}
                                             <span className="font-semibold text-gray-800">
                                                 {member.income > 0 ? `${investmentPct.toFixed(0)}%` : `₩${member.investment.toLocaleString()}`}
+                                            </span>
+                                        </span>
+                                    </div>
+                                )}
+                                {member.income > 0 && !isOverspent && remainder > 0 && (
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="w-2.5 h-2.5 rounded-full bg-gray-300 flex-shrink-0" />
+                                        <span className="text-xs text-gray-500">
+                                            잔여{' '}
+                                            <span className="font-semibold text-emerald-600">
+                                                {remainPct.toFixed(0)}%
                                             </span>
                                         </span>
                                     </div>
