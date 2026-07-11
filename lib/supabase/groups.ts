@@ -85,68 +85,42 @@ export async function createGroup(
  * @param memberName 멤버 이름 (닉네임)
  */
 export async function joinGroupByCode(
-    userId: string,
+    _userId: string,
     inviteCode: string,
     memberName: string
 ): Promise<GroupResult> {
     try {
-        // 1. 초대 코드로 그룹 조회
-        const { data, error: groupError } = await supabase
-            .from('groups')
-            .select('id, name')
-            .eq('invite_code', inviteCode.toUpperCase())
-            .maybeSingle()
+        // 조회 + 검증 + 가입을 서버 측 SECURITY DEFINER RPC로 원자적 처리.
+        // (groups 테이블 전체 열거를 막기 위해 클라이언트 직접 조회를 제거)
+        const { data, error } = await (supabase as any).rpc('join_group_by_code', {
+            p_code: inviteCode.toUpperCase().trim(),
+            p_member_name: memberName,
+        })
 
-        const group = data as { id: string; name: string } | null
-
-        if (groupError || !group) {
-            return {
-                success: false,
-                error: '유효하지 않은 초대 코드입니다.',
-            }
+        if (error) {
+            console.error('[joinGroupByCode] RPC error:', error)
+            return { success: false, error: '그룹 참여 중 오류가 발생했습니다.' }
         }
 
-        // 2. 이미 그룹에 가입되어 있는지 확인
-        const { data: existingMember } = await supabase
-            .from('members')
-            .select('id')
-            .eq('group_id', group.id)
-            .eq('user_id', userId)
-            .maybeSingle()
+        // RPC는 TABLE(group_id, group_name, status) 한 행을 반환
+        const row = Array.isArray(data) ? data[0] : data
+        const status = row?.status as string | undefined
 
-        if (existingMember) {
-            return {
-                success: false,
-                error: '이미 이 그룹에 가입되어 있습니다.',
-            }
-        }
-
-        // 3. 사용자를 멤버로 등록
-        const { error: memberError } = await supabase
-            .from('members')
-            // @ts-ignore
-            .insert({
-                group_id: group.id,
-                user_id: userId,
-                name: memberName,
-                role: 'member',
-                avatar: '👤',
-                color: '#10B981',
-                bg_color: '#10B981',
-            } as any)
-
-        if (memberError) {
-            return {
-                success: false,
-                error: '그룹 참여에 실패했습니다.',
-            }
-        }
-
-        return {
-            success: true,
-            groupId: group.id,
+        switch (status) {
+            case 'joined':
+            case 'already_member':
+                return { success: true, groupId: row.group_id }
+            case 'already_in_other_group':
+                return { success: false, error: '이미 다른 그룹에 참여 중입니다.' }
+            case 'invalid_code':
+                return { success: false, error: '유효하지 않은 초대 코드입니다.' }
+            case 'unauthenticated':
+                return { success: false, error: '로그인이 필요합니다.' }
+            default:
+                return { success: false, error: '그룹 참여에 실패했습니다.' }
         }
     } catch (error) {
+        console.error('[joinGroupByCode] Exception:', error)
         return {
             success: false,
             error: '그룹 참여 중 오류가 발생했습니다.',
