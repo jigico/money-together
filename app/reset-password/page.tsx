@@ -18,42 +18,69 @@ export default function ResetPasswordPage() {
     const [confirmPassword, setConfirmPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const [invalidReason, setInvalidReason] = useState('')
 
-    // 재설정 링크로 진입 시 Supabase가 URL의 코드를 세션으로 교환할 때까지 대기
+    // 재설정 링크로 진입 시 세션을 확보할 때까지 대기.
+    // 지원하는 링크 형식:
+    //  1) token_hash + type  → verifyOtp (권장: 메일 스캐너/크로스디바이스에 강함)
+    //  2) ?code=             → @supabase/ssr가 자동 교환 (PKCE, 같은 브라우저 필요)
+    //  3) 기존 세션           → 그대로 진행
     useEffect(() => {
         let resolved = false
 
-        // 링크가 만료/무효인 경우 URL에 error 파라미터가 실림
         const url = new URL(window.location.href)
         const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''))
-        if (url.searchParams.get('error') || hashParams.get('error')) {
+
+        const markReady = () => {
+            if (resolved) return
+            resolved = true
+            setPageState('ready')
+        }
+        const markInvalid = (reason: string) => {
+            if (resolved) return
+            resolved = true
+            setInvalidReason(reason)
             setPageState('invalid')
+        }
+
+        // 링크가 만료/무효인 경우 URL에 error 파라미터가 실림
+        const urlError = url.searchParams.get('error_description') || hashParams.get('error_description')
+            || url.searchParams.get('error') || hashParams.get('error')
+        if (urlError) {
+            markInvalid(decodeURIComponent(urlError))
             return
         }
 
+        // 1) token_hash 방식: 우리 페이지에서 직접 OTP 검증 (일회용 토큰을 이 시점에만 소비)
+        const tokenHash = url.searchParams.get('token_hash')
+        const type = url.searchParams.get('type')
+        if (tokenHash) {
+            supabase.auth
+                .verifyOtp({ type: (type as any) || 'recovery', token_hash: tokenHash })
+                .then(({ error }) => {
+                    if (error) markInvalid(error.message)
+                    else markReady()
+                })
+            return
+        }
+
+        // 2) 세션 자동 감지 (?code= PKCE 교환 또는 기존 세션)
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (resolved) return
             if (session && (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-                resolved = true
-                setPageState('ready')
+                markReady()
             }
         })
 
         supabase.auth.getSession().then(({ data: { session } }) => {
-            if (resolved) return
-            if (session) {
-                resolved = true
-                setPageState('ready')
-            }
+            if (session) markReady()
         })
 
-        // 일정 시간 내 세션이 안 잡히면 무효한 링크로 판단
-        const timer = setTimeout(() => {
-            if (!resolved) {
-                resolved = true
-                setPageState('invalid')
-            }
-        }, 3000)
+        // 모바일 네트워크를 고려해 넉넉히 대기 후, 마지막으로 세션을 한 번 더 확인
+        const timer = setTimeout(async () => {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session) markReady()
+            else markInvalid('no_session')
+        }, 8000)
 
         return () => {
             subscription.unsubscribe()
@@ -119,6 +146,9 @@ export default function ResetPasswordPage() {
                     <Link href="/login" className="inline-block mt-4 text-sm text-gray-400 hover:text-gray-600 transition-colors">
                         로그인 화면으로 돌아가기
                     </Link>
+                    {invalidReason && (
+                        <p className="mt-5 text-[11px] text-gray-300 break-all">사유: {invalidReason}</p>
+                    )}
                 </Card>
             </div>
         )
