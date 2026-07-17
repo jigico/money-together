@@ -543,7 +543,6 @@ function getCategoryColorClass(categoryName: string): string {
 export interface StatsDashboardData {
     categoryData: CategoryDataUI[]
     memberSpending: MemberSpendingUI[]
-    topCategories: any[]
     totalSpending: number
     totalIncome: number
     totalSavings: number
@@ -558,7 +557,6 @@ export async function getStatsDashboardData(
     const empty: StatsDashboardData = {
         categoryData: [],
         memberSpending: [],
-        topCategories: [],
         totalSpending: 0,
         totalIncome: 0,
         totalSavings: 0,
@@ -668,18 +666,6 @@ export async function getStatsDashboardData(
         color: data.color
     }))
 
-    // TopCategories (정렬 & 매핑)
-    const topCategories = [...categoryData]
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 3)
-        .map((cat, index) => ({
-            rank: index + 1,
-            name: cat.name,
-            amount: cat.value,
-            icon: getIconForCategory(cat.name),
-            color: getCategoryColorClass(cat.name)
-        }))
-
     // MemberSpendingUI & MemberFinancialSummary
     const memberSpending: MemberSpendingUI[] = []
     const memberFinancials: MemberFinancialSummary[] = []
@@ -719,7 +705,6 @@ export async function getStatsDashboardData(
     return {
         categoryData,
         memberSpending,
-        topCategories,
         totalSpending,
         totalIncome,
         totalSavings,

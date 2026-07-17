@@ -6,7 +6,6 @@ import { ChevronLeft, ChevronRight, TrendingDown, TrendingUp } from "lucide-reac
 import { CategoryDonutChart, type CategoryData } from "@/components/stats/category-donut-chart"
 import { MemberComparisonBar, type MemberSpending } from "@/components/stats/member-comparison-bar"
 import { MonthlyTrendChart, type MonthlyData } from "@/components/stats/monthly-trend-chart"
-import { TopCategoriesList, type TopCategory } from "@/components/stats/top-categories-list"
 import { getDashboardSummary, getStatsDashboardData, getMonthlyFinancialTrend } from "@/lib/supabase/queries"
 import type { MemberFinancialSummary, DashboardSummary } from "@/lib/supabase/queries"
 import { MemberFinancialProfile } from "@/components/stats/member-financial-profile"
@@ -18,7 +17,6 @@ export default function StatsPage() {
     const [categoryData, setCategoryData] = useState<CategoryData[]>([])
     const [memberSpending, setMemberSpending] = useState<MemberSpending[]>([])
     const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([])
-    const [topCategories, setTopCategories] = useState<TopCategory[]>([])
     const [totalSpending, setTotalSpending] = useState(0)
     const [totalIncome, setTotalIncome] = useState(0)
     const [totalSavings, setTotalSavings] = useState(0)
@@ -53,7 +51,6 @@ export default function StatsPage() {
 
                 setCategoryData(statsData.categoryData)
                 setMemberSpending(statsData.memberSpending)
-                setTopCategories(statsData.topCategories)
                 setTotalSpending(statsData.totalSpending)
                 setTotalIncome(statsData.totalIncome)
                 setTotalSavings(statsData.totalSavings)
@@ -242,13 +239,6 @@ export default function StatsPage() {
             {monthlyData.length > 0 && (
                 <div className="px-5 mb-6">
                     <MonthlyTrendChart data={monthlyData} />
-                </div>
-            )}
-
-            {/* Top 3 Categories */}
-            {topCategories.length > 0 && (
-                <div className="px-5 mb-6">
-                    <TopCategoriesList categories={topCategories} />
                 </div>
             )}
         </div>
