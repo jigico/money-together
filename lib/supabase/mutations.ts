@@ -130,9 +130,9 @@ export async function updateMemberName(name: string): Promise<{ success: boolean
 // 자주 쓰는 내역 (Frequent Transactions) CRUD
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FREQUENT_LIMIT = 15
+const FREQUENT_LIMIT = 20
 
-// 자주 쓰는 내역 추가 (그룹당 최대 15개 제한)
+// 자주 쓰는 내역 추가 (그룹당 최대 20개 제한)
 export async function addFrequentTransaction(data: {
     transaction_type: TransactionType
     category_id: string
