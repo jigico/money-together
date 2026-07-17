@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
+import { useSearchParams } from "next/navigation"
 import { ChevronLeft, ChevronRight, Plus, CreditCard, Home, User, Calendar, List, SlidersHorizontal, X } from "lucide-react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
@@ -180,9 +181,20 @@ function generateTimeline() {
     return timeline
 }
 
-export default function HistoryPage() {
-    const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
-    const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
+const TRANSACTION_TYPES: TransactionType[] = ['expense', 'income', 'savings', 'investment']
+
+function HistoryContent() {
+    // 통계 → 카테고리 상세에서 딥링크로 진입 시 초기 월/필터를 URL에서 받는다
+    // 예: /history?category=식비&type=expense&year=2026&month=7
+    const searchParams = useSearchParams()
+
+    const [currentYear, setCurrentYear] = useState(
+        () => Number(searchParams.get('year')) || new Date().getFullYear()
+    )
+    const [currentMonth, setCurrentMonth] = useState(() => {
+        const m = Number(searchParams.get('month'))
+        return m >= 1 && m <= 12 ? m - 1 : new Date().getMonth()
+    })
     const [isTimelineOpen, setIsTimelineOpen] = useState(false)
     const [transactions, setTransactions] = useState<TransactionUI[]>([])
     const [loading, setLoading] = useState(true)
@@ -192,8 +204,13 @@ export default function HistoryPage() {
     const [categories, setCategories] = useState<Category[]>([])
     const [isFilterOpen, setIsFilterOpen] = useState(false)
     const [filterMember, setFilterMember] = useState<string | null>(null)
-    const [filterCategoryGroup, setFilterCategoryGroup] = useState<TransactionType | null>(null)
-    const [filterCategory, setFilterCategory] = useState<string | null>(null)
+    const [filterCategoryGroup, setFilterCategoryGroup] = useState<TransactionType | null>(() => {
+        const t = searchParams.get('type') as TransactionType | null
+        return t && TRANSACTION_TYPES.includes(t) ? t : null
+    })
+    const [filterCategory, setFilterCategory] = useState<string | null>(
+        () => searchParams.get('category')
+    )
 
     // Scroll to selected date when timeline opens
     useEffect(() => {
@@ -769,5 +786,19 @@ export default function HistoryPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function HistoryPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center">
+                    <p className="text-gray-500">불러오는 중...</p>
+                </div>
+            }
+        >
+            <HistoryContent />
+        </Suspense>
     )
 }

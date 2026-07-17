@@ -210,7 +210,11 @@ export default function StatsPage() {
             {/* Category Donut Chart */}
             {categoryData.length > 0 ? (
                 <div className="px-5 mb-6">
-                    <CategoryDonutChart data={categoryData} />
+                    <CategoryDonutChart
+                        data={categoryData}
+                        year={currentMonth.year}
+                        month={currentMonth.month}
+                    />
                 </div>
             ) : (
                 <div className="px-5 mb-6">

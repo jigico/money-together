@@ -729,6 +729,71 @@ export async function getStatsDashboardData(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 카테고리별 지출 상세 (해당 월 + 전월을 단일 쿼리로 조회해 증감 계산)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CategoryDetailItem {
+    name: string
+    amount: number
+    color: string
+    prevAmount: number
+}
+
+export async function getCategoryDetail(year: number, month: number): Promise<CategoryDetailItem[]> {
+    const groupId = await getCurrentGroupId()
+    if (!groupId) return []
+
+    const pad = (n: number) => String(n).padStart(2, '0')
+
+    // 전월 1일 ~ 해당 월 말일까지 한 번에 조회
+    const prevMonth = month === 1 ? 12 : month - 1
+    const prevYear = month === 1 ? year - 1 : year
+    const startStr = `${prevYear}-${pad(prevMonth)}-01`
+    const lastDay = new Date(year, month, 0).getDate()
+    const endStr = `${year}-${pad(month)}-${pad(lastDay)}`
+
+    const { data, error } = await supabase
+        .from('transactions')
+        .select('date, amount, category:categories(name, color)')
+        .eq('group_id', groupId)
+        .eq('transaction_type', 'expense')
+        .gte('date', startStr)
+        .lte('date', endStr)
+
+    if (error || !data) {
+        console.error('Error fetching category detail:', error)
+        return []
+    }
+
+    const curKey = `${year}-${pad(month)}`
+    const map = new Map<string, CategoryDetailItem>()
+
+    data.forEach((tx: any) => {
+        const name = tx.category?.name || '기타'
+        const color = tx.category?.color || '#9CA3AF'
+        const isCurrentMonth = tx.date.substring(0, 7) === curKey
+
+        const existing = map.get(name)
+        if (existing) {
+            if (isCurrentMonth) existing.amount += tx.amount
+            else existing.prevAmount += tx.amount
+        } else {
+            map.set(name, {
+                name,
+                color,
+                amount: isCurrentMonth ? tx.amount : 0,
+                prevAmount: isCurrentMonth ? 0 : tx.amount,
+            })
+        }
+    })
+
+    // 이번 달 지출이 있는 카테고리만, 금액 내림차순
+    return Array.from(map.values())
+        .filter((c) => c.amount > 0)
+        .sort((a, b) => b.amount - a.amount)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 월별 재무 추이 통합 조회 (지출 + 저축 + 투자, 단일 쿼리)
 // ─────────────────────────────────────────────────────────────────────────────
 
