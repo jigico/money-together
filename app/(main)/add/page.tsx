@@ -1,5 +1,6 @@
 "use client"
 
+import { AmountInput } from "@/components/entry/amount-input"
 import { CalendarDatePicker } from "@/components/entry/calendar-date-picker"
 import { MemberSelector } from "@/components/entry/member-selector"
 import { NumberKeypad } from "@/components/entry/number-keypad"
@@ -117,6 +118,8 @@ export default function AddPage() {
     const [saving, setSaving] = useState(false)
     const [saveAsTemplate, setSaveAsTemplate] = useState(false)
     const [currentUserMemberId, setCurrentUserMemberId] = useState<string | null>(null)
+    // 기본은 네이티브 키보드 입력, 토글 시 커스텀 키패드 표시
+    const [keypadVisible, setKeypadVisible] = useState(false)
 
     useEffect(() => {
         async function fetchData() {
@@ -172,11 +175,6 @@ export default function AddPage() {
             setSelectedMemberId(currentUserMemberId)
         }
         // usage_count 증가 로직은 추후 결정 예정 (현재 보류)
-    }
-
-    const formatAmount = (value: string) => {
-        if (!value) return "0"
-        return Number(value).toLocaleString("ko-KR")
     }
 
     const formatDate = (date: Date) => {
@@ -301,14 +299,13 @@ export default function AddPage() {
             </div>
 
             {/* Amount Display */}
-            <div className="px-6 py-4 flex-shrink-0">
-                <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-5xl font-bold tracking-tight text-gray-900 tabular-nums">
-                        {formatAmount(amount)}
-                    </span>
-                    <span className="text-3xl font-semibold text-gray-500">원</span>
-                    <span className="w-0.5 h-12 bg-[#0047AB] animate-pulse ml-1" />
-                </div>
+            <div className="py-4 flex-shrink-0">
+                <AmountInput
+                    amount={amount}
+                    onAmountChange={setAmount}
+                    keypadVisible={keypadVisible}
+                    onToggleKeypad={() => setKeypadVisible((v) => !v)}
+                />
             </div>
 
             {/* Member Selection */}
@@ -438,6 +435,7 @@ export default function AddPage() {
                 onSave={handleSave}
                 isValid={isValid}
                 className="mt-auto"
+                showKeys={keypadVisible}
             />
 
             {/* Date Picker Modal */}

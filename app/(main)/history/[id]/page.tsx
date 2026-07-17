@@ -1,5 +1,6 @@
 "use client"
 
+import { AmountInput } from "@/components/entry/amount-input"
 import { CalendarDatePicker } from "@/components/entry/calendar-date-picker"
 import { MemberSelector } from "@/components/entry/member-selector"
 import { NumberKeypad } from "@/components/entry/number-keypad"
@@ -103,6 +104,8 @@ export default function TransactionDetailPage() {
     const [saving, setSaving] = useState(false)
     const [deleting, setDeleting] = useState(false)
     const [saveAsTemplate, setSaveAsTemplate] = useState(false)
+    // 기본은 네이티브 키보드 입력, 토글 시 커스텀 키패드 표시
+    const [keypadVisible, setKeypadVisible] = useState(false)
 
     useEffect(() => {
         async function fetchData() {
@@ -159,11 +162,6 @@ export default function TransactionDetailPage() {
     const filteredCategories = categories.filter(c => TYPE_CATEGORY_NAMES[transactionType].includes(c.name))
 
     const selectedCategoryData = filteredCategories.find((c) => c.id === selectedCategory)
-
-    const formatAmount = (value: string) => {
-        if (!value) return "0"
-        return Number(value).toLocaleString("ko-KR")
-    }
 
     const formatDate = (date: Date) => {
         const year = date.getFullYear()
@@ -302,14 +300,13 @@ export default function TransactionDetailPage() {
             </div>
 
             {/* Amount Display */}
-            <div className="px-6 py-4 flex-shrink-0">
-                <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-5xl font-bold tracking-tight text-gray-900 tabular-nums">
-                        {formatAmount(amount)}
-                    </span>
-                    <span className="text-3xl font-semibold text-gray-500">원</span>
-                    <span className="w-0.5 h-12 bg-[#0047AB] animate-pulse ml-1" />
-                </div>
+            <div className="py-4 flex-shrink-0">
+                <AmountInput
+                    amount={amount}
+                    onAmountChange={setAmount}
+                    keypadVisible={keypadVisible}
+                    onToggleKeypad={() => setKeypadVisible((v) => !v)}
+                />
             </div>
 
             {/* Member Selection */}
@@ -427,6 +424,7 @@ export default function TransactionDetailPage() {
                 className="mt-auto"
                 showDelete={true}
                 onDelete={() => setIsDeleteDialogOpen(true)}
+                showKeys={keypadVisible}
             />
 
             {/* Date Picker Modal - Calendar Style */}

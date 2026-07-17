@@ -14,11 +14,14 @@ interface NumberKeypadProps {
     className?: string
     onDelete?: () => void
     showDelete?: boolean
+    /** false면 숫자 그리드를 숨기고 저장/삭제 버튼만 표시 (네이티브 키보드 입력 모드) */
+    showKeys?: boolean
 }
 
-export function NumberKeypad({ onKeyPress, onSave, isValid, className, onDelete, showDelete }: NumberKeypadProps) {
+export function NumberKeypad({ onKeyPress, onSave, isValid, className, onDelete, showDelete, showKeys = true }: NumberKeypadProps) {
     return (
         <div className={`bg-white rounded-t-[2rem] shadow-[0_-4px_30px_rgba(0,0,0,0.05)] p-4 pb-28 ${className || ''}`}>
+            {showKeys && (
             <div className="grid grid-cols-3 gap-3 mb-4">
                 {keypadKeys.flat().map((key, index) => (
                     <button
@@ -54,6 +57,7 @@ export function NumberKeypad({ onKeyPress, onSave, isValid, className, onDelete,
                     </button>
                 ))}
             </div>
+            )}
 
             {/* Save and Delete Buttons */}
             {showDelete && onDelete ? (
