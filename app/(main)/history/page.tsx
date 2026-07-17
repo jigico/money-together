@@ -306,9 +306,13 @@ function HistoryContent() {
     const months = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]
     const timeline = generateTimeline()
 
-    // 이번 달 총 지출 (필터와 무관하게 항상 expense 합산)
-    const totalAmount = transactions
-        .filter(t => t.transactionType === 'expense')
+    // 요약 카드: 유형 필터가 있으면 그 유형 기준, 없으면 지출 기준.
+    // 멤버/카테고리 필터도 합계에 반영되도록 filteredTransactions에서 집계한다.
+    const summaryType: TransactionType = filterCategoryGroup ?? 'expense'
+    const summaryTypeLabel = ({ expense: '지출', income: '수입', savings: '저축', investment: '투자' } as Record<TransactionType, string>)[summaryType]
+    const summaryColor = ({ expense: 'text-[#0047AB]', income: 'text-green-600', savings: 'text-blue-600', investment: 'text-purple-600' } as Record<TransactionType, string>)[summaryType]
+    const totalAmount = filteredTransactions
+        .filter(t => t.transactionType === summaryType)
         .reduce((sum, transaction) => sum + transaction.amount, 0)
 
     // Animated Counter Component
@@ -385,8 +389,13 @@ function HistoryContent() {
                     transition={{ duration: 0.4 }}
                     className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100/50"
                 >
-                    <p className="text-sm text-gray-500 mb-2 font-medium">이번 달 총 지출</p>
-                    <p className="text-3xl font-bold text-[#0047AB] tracking-tight">
+                    <p className="text-sm text-gray-500 mb-2 font-medium">
+                        이번 달 총 {summaryTypeLabel}
+                        {(filterMember || filterCategory) && (
+                            <span className="ml-1.5 text-xs text-gray-400 font-normal">· 필터 적용</span>
+                        )}
+                    </p>
+                    <p className={`text-3xl font-bold tracking-tight ${summaryColor}`}>
                         <AnimatedCounter value={totalAmount} />원
                     </p>
                 </motion.div>
