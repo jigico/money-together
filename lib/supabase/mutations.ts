@@ -1,5 +1,6 @@
 import { supabase } from './client'
 import { getCurrentGroupId } from './helpers'
+import { FREQUENT_LIMIT } from '@/lib/constants'
 import type { TransactionType, FrequentTransaction } from '@/types/database'
 
 // 거래 추가 (그룹 ID 자동 포함)
@@ -130,9 +131,7 @@ export async function updateMemberName(name: string): Promise<{ success: boolean
 // 자주 쓰는 내역 (Frequent Transactions) CRUD
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FREQUENT_LIMIT = 20
-
-// 자주 쓰는 내역 추가 (그룹당 최대 20개 제한)
+// 자주 쓰는 내역 추가 (그룹당 최대 FREQUENT_LIMIT개 제한)
 export async function addFrequentTransaction(data: {
     transaction_type: TransactionType
     category_id: string

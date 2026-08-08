@@ -10,6 +10,7 @@ import {
     deleteFrequentTransaction,
 } from "@/lib/supabase/mutations"
 import type { FrequentTransaction, Category, TransactionType } from "@/types/database"
+import { FREQUENT_LIMIT } from "@/lib/constants"
 import {
     Utensils, Car, Coffee, ShoppingBasket, Home, Hospital, Heart, Gamepad2,
     Plane, MoreHorizontal, Shirt, Theater, Hotel, Gift, GraduationCap, Baby,
@@ -216,17 +217,17 @@ export default function FrequentTemplatesPage() {
                     <div className="flex items-center gap-1.5">
                         <Zap className="w-4 h-4 text-amber-500" />
                         <span className="text-sm font-medium text-gray-600">
-                            {templates.length} / 15개 사용 중
+                            {templates.length} / {FREQUENT_LIMIT}개 사용 중
                         </span>
                     </div>
-                    {templates.length >= 15 && (
+                    {templates.length >= FREQUENT_LIMIT && (
                         <span className="text-xs text-red-500 font-medium">최대 개수 도달</span>
                     )}
                 </div>
                 <div className="mt-2 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                     <div
-                        className={`h-full rounded-full transition-all ${templates.length >= 15 ? 'bg-red-400' : 'bg-[#0047AB]'}`}
-                        style={{ width: `${(templates.length / 15) * 100}%` }}
+                        className={`h-full rounded-full transition-all ${templates.length >= FREQUENT_LIMIT ? 'bg-red-400' : 'bg-[#0047AB]'}`}
+                        style={{ width: `${(templates.length / FREQUENT_LIMIT) * 100}%` }}
                     />
                 </div>
             </div>

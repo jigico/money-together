@@ -2,6 +2,7 @@ import { supabase } from './client'
 import type { Transaction, Category, Member, TransactionUI, CategoryDataUI, MemberSpendingUI, TransactionType, FrequentTransaction } from '@/types/database'
 import { transactionToUI, memberToUI } from '@/types/database'
 import { getCurrentGroupId } from './helpers'
+import { FREQUENT_LIMIT } from '@/lib/constants'
 
 // 거래 내역 가져오기 (그룹 필터링 포함)
 export async function getTransactions(startDate?: string, endDate?: string) {
@@ -161,7 +162,7 @@ export async function getCategories(): Promise<Category[]> {
     return data as Category[]
 }
 
-// 자주 쓰는 내역 목록 가져오기 (그룹 기준, usage_count DESC 정렬, 최대 15개)
+// 자주 쓰는 내역 목록 가져오기 (그룹 기준, usage_count DESC 정렬, 최대 FREQUENT_LIMIT개)
 export async function getFrequentTransactions(): Promise<FrequentTransaction[]> {
     const groupId = await getCurrentGroupId()
     if (!groupId) return []
@@ -171,7 +172,7 @@ export async function getFrequentTransactions(): Promise<FrequentTransaction[]> 
         .select('*')
         .eq('group_id', groupId)
         .order('usage_count', { ascending: false })
-        .limit(15)
+        .limit(FREQUENT_LIMIT)
 
     if (error) {
         console.error('Error fetching frequent transactions:', error)
