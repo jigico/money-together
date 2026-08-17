@@ -17,7 +17,9 @@ const cspDirectives = [
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob: https://*.google-analytics.com https://*.googletagmanager.com`,
     `font-src 'self' data:`,
-    `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com`,
+    // GA4 수집 비콘은 apex 도메인(analytics.google.com / google-analytics.com)으로 전송된다.
+    // CSP 와일드카드(*.도메인)는 apex를 매칭하지 못하므로 apex를 명시적으로 허용해야 한다.
+    `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.googletagmanager.com https://google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com`,
     `worker-src 'self' blob:`,
     `frame-ancestors 'none'`,
     `base-uri 'self'`,
